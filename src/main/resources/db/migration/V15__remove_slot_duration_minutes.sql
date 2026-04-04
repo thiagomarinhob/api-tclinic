@@ -1,0 +1,1 @@
+ALTER TABLE professional_schedules DROP COLUMN slot_duration_minutes;

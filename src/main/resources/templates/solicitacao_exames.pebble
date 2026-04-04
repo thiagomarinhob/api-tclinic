@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Solicitação de Exames</title>
+  <style type="text/css">
+    @page {
+      size: A4;
+      margin: 1.5cm;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11pt;
+      color: #000;
+      line-height: 1.4;
+    }
+
+    .page {
+      width: 100%;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+
+    /* Cabeçalho Superior */
+    .header-table td {
+      border: none;
+      vertical-align: middle;
+      padding: 10px;
+    }
+
+    .logo-cell {
+      width: 120px;
+      text-align: center;
+    }
+
+    .logo-cell img {
+      max-width: 110px;
+      max-height: 70px;
+    }
+
+    /* Marca d'água */
+    .watermark {
+      position: fixed;
+      top: 28%;
+      left: 10%;
+      width: 80%;
+    }
+    .watermark img { width: 100%; height: auto; }
+
+    .clinic-name-header {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: normal;
+    }
+
+    .doc-title {
+      text-align: center;
+      font-size: 13pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin: 20px 0;
+    }
+
+    /* Tabelas de conteúdo */
+    .content-table td {
+      border: 1px solid #000;
+      padding: 8px 12px;
+    }
+
+    .th-gray {
+      background-color: #e0e0e0;
+      font-weight: bold;
+    }
+
+    /* Lista de exames */
+    .exames-body {
+      vertical-align: top;
+      padding-top: 10px;
+    }
+
+    ol.exames {
+      margin: 4px 0 4px 20px;
+      padding: 0;
+    }
+
+    ol.exames li {
+      padding: 4px 0;
+    }
+
+    .indicacao-body {
+      vertical-align: top;
+      white-space: pre-wrap;
+      min-height: 60px;
+    }
+
+    /* Rodapé / Assinatura */
+    .signature-container {
+      margin-top: 50px;
+      width: 100%;
+    }
+
+    .signature-wrapper {
+      float: right;
+      width: 320px;
+      text-align: center;
+    }
+
+    .signature-line {
+      border-top: 1px solid #000;
+      margin-bottom: 5px;
+    }
+
+    .signature-info {
+      font-size: 10pt;
+      color: #666;
+      font-weight: bold;
+    }
+
+    .specialty-info {
+      font-size: 9pt;
+      color: #999;
+    }
+
+    .clearfix:after {
+      content: "";
+      display: table;
+      clear: both;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    {% if clinicWatermarkBase64 is not null %}
+    <div class="watermark">
+      <img src="{{ clinicWatermarkBase64 }}" alt="" />
+    </div>
+    {% endif %}
+
+    <table class="header-table">
+      <tr>
+        <td class="logo-cell">
+          {% if clinicLogoBase64 is not null %}
+            <img src="{{ clinicLogoBase64 }}" width="100" height="60" alt="Logo {{ clinicName }}" />
+          {% endif %}
+        </td>
+        <td class="clinic-name-header">{{ clinicName }}</td>
+        <td class="logo-cell">
+          {% if systemLogoBase64 is not null %}
+            <img src="{{ systemLogoBase64 }}" width="100" height="60" alt="Solutions Clinic" />
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+
+    <div class="doc-title">Solicitação de Exames</div>
+
+    <table class="content-table">
+      <tr>
+        <td class="th-gray" style="width: 70%;">Atendimento</td>
+        <td class="th-gray" style="width: 30%;">Data: {{ date }}</td>
+      </tr>
+      <tr>
+        <td colspan="2">
+          <span>Paciente:</span> {{ patientName }}
+        </td>
+      </tr>
+    </table>
+
+    <table class="content-table">
+      <tr>
+        <td class="th-gray">Solicito a realização dos seguintes exames</td>
+      </tr>
+      <tr>
+        <td class="exames-body">
+          <ol class="exames">
+            {% for exame in exames %}
+            <li>{{ exame }}</li>
+            {% endfor %}
+          </ol>
+        </td>
+      </tr>
+    </table>
+
+    {% if indicacao %}
+    <table class="content-table">
+      <tr>
+        <td class="th-gray">Indicação Clínica</td>
+      </tr>
+      <tr>
+        <td class="indicacao-body">{{ indicacao }}</td>
+      </tr>
+    </table>
+    {% endif %}
+
+    <div class="signature-container clearfix">
+      <div class="signature-wrapper">
+        <div class="signature-line"></div>
+        <div class="signature-info">
+          {{ professionalName }} ({{ documentLabel }})
+        </div>
+        {% if specialty %}
+        <div class="specialty-info">
+          {{ specialty }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "firstName": "Ana",
+  "lastName": "Costa",
+  "email": "ana.costa@doutorana.com.br",
+  "password": "senhaSegura456",
+  "name": "Dr. Ana Costa - Cardiologia",
+  "cpf": "12345678901",
+  "planType": "Básico",
+  "address": "Rua dos Médicos, 456, Jardim das Flores, Rio de Janeiro - RJ",
+  "phone": "(21) 99876-5432",
+  "subdomain": "doutorana"
+}
+

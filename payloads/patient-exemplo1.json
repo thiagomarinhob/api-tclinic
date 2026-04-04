@@ -1,0 +1,22 @@
+{
+  "tenantId": "00000000-0000-0000-0000-000000000000",
+  "firstName": "Maria Silva Santos",
+  "cpf": "12345678901",
+  "birthDate": "15/03/1990",
+  "gender": "FEMININO",
+  "email": "maria.silva@email.com",
+  "phone": "(11) 98765-4321",
+  "whatsapp": "(11) 98765-4321",
+  "addressStreet": "Rua das Flores",
+  "addressNumber": "123",
+  "addressComplement": "Apto 45",
+  "addressNeighborhood": "Centro",
+  "addressCity": "São Paulo",
+  "addressState": "SP",
+  "addressZipcode": "01234-567",
+  "bloodType": "A_POSITIVE",
+  "allergies": "Penicilina, Dipirona",
+  "guardianName": "João Silva Santos",
+  "guardianPhone": "(11) 98765-4322",
+  "guardianRelationship": "Pai"
+}

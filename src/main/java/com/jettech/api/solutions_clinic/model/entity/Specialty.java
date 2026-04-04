@@ -1,0 +1,20 @@
+package com.jettech.api.solutions_clinic.model.entity;
+
+public enum Specialty {
+    CARDIOLOGISTA,
+    CLINICO_GERAL,
+    DENTISTA,
+    DERMATOLOGISTA,
+    ENDOCRINOLOGISTA,
+    ENFERMEIRO,
+    FISIOTERAPEUTA,
+    GASTROENTEROLOGISTA,
+    GINECOLOGISTA,
+    MASTOLOGISTA,
+    OBSTETRIACO,
+    OFTALMOLOGISTA,
+    PEDIATRA,
+    PSICOLOGISTA,
+    PSIQUIATRA,
+    UROLOGISTA
+}
