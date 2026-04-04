@@ -1,0 +1,43 @@
+services:
+  backend:
+    image: ghcr.io/thiagomarinhob/api-tclinic:latest
+    container_name: solutions-clinic-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    environment:
+      POSTGRES_HOST: solutions-clinic-postgres
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-solutions_clinic}
+      POSTGRES_USER: ${POSTGRES_USER:-solutions_clinic}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      SECURITY_TOKEN_SECRET: ${SECURITY_TOKEN_SECRET:?SECURITY_TOKEN_SECRET is required}
+      SECURITY_JWT_ISSUER: ${SECURITY_JWT_ISSUER:-solutions-clinic}
+      SECURITY_JWT_AUDIENCE: ${SECURITY_JWT_AUDIENCE:-}
+      SECURITY_JWT_JWK_SET_URI: ${SECURITY_JWT_JWK_SET_URI:-}
+      STRIPE_API_KEY: ${STRIPE_API_KEY:-}
+      STRIPE_API_SECRET: ${STRIPE_API_SECRET:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_WEBHOOK_SUCCESS_PATH: ${STRIPE_WEBHOOK_SUCCESS_PATH:-/plan-selection/success}
+      STRIPE_WEBHOOK_CANCEL_PATH: ${STRIPE_WEBHOOK_CANCEL_PATH:-/plan-selection}
+      WHATSAPP_WEBHOOK_VERIFY_TOKEN: ${WHATSAPP_WEBHOOK_VERIFY_TOKEN:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v25.0}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
+      MEMED_API_KEY: ${MEMED_API_KEY:-}
+      MEMED_API_URL: ${MEMED_API_URL:-https://integrations.api.memed.com.br/v1}
+      MEMED_SECRET_KEY: ${MEMED_SECRET_KEY:-}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      TRIAL_DURATION_DAYS: ${TRIAL_DURATION_DAYS:-14}
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-clinic-bucket}
+    networks:
+      - solutions-network
+
+networks:
+  solutions-network:
+    external: true
