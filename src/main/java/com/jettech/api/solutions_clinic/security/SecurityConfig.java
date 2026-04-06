@@ -179,7 +179,12 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // Permite qualquer porta do localhost para desenvolvimento
-        configuration.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
+        List<String> allowedOrigins = new java.util.ArrayList<>(List.of("http://localhost:*", "http://127.0.0.1:*"));
+        String frontendUrl = System.getenv("FRONTEND_URL");
+        if (frontendUrl != null && !frontendUrl.isBlank()) {
+            allowedOrigins.add(frontendUrl);
+        }
+        configuration.setAllowedOriginPatterns(allowedOrigins);
         // Permite os métodos HTTP mais comuns
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         // Permite headers comuns, incluindo o de Autorização para o JWT
