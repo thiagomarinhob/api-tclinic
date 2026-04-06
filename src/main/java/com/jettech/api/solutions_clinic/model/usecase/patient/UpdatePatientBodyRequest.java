@@ -12,6 +12,8 @@ public record UpdatePatientBodyRequest(
     @Size(min = 2, max = 100, message = "O campo [firstName] deve ter entre 2 e 100 caracteres")
     String firstName,
 
+    String motherName,
+
     @Pattern(regexp = "\\d{11}", message = "O campo [cpf] deve conter exatamente 11 dígitos")
     String cpf,
 

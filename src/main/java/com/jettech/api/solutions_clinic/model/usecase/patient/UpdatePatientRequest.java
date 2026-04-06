@@ -8,6 +8,7 @@ import java.util.UUID;
 public record UpdatePatientRequest(
     UUID id,
     String firstName,
+    String motherName,
     String cpf,
     String birthDate,
     Gender gender,

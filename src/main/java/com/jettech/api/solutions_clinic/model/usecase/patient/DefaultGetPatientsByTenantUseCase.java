@@ -73,6 +73,7 @@ public class DefaultGetPatientsByTenantUseCase implements GetPatientsByTenantUse
                 patient.getId(),
                 patient.getTenant().getId(),
                 patient.getFirstName(),
+                patient.getMotherName(),
                 patient.getCpf(),
                 patient.getBirthDate(),
                 patient.getGender(),

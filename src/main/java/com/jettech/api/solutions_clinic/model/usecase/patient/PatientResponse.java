@@ -10,6 +10,7 @@ public record PatientResponse(
     UUID id,
     UUID tenantId,
     String firstName,
+    String motherName,
     String cpf,
     String birthDate,
     Gender gender,

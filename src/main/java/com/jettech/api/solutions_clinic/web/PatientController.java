@@ -64,6 +64,7 @@ public class PatientController implements PatientAPI {
         return updatePatientUseCase.execute(new UpdatePatientRequest(
                 id,
                 request.firstName(),
+                request.motherName(),
                 request.cpf(),
                 request.birthDate(),
                 request.gender(),

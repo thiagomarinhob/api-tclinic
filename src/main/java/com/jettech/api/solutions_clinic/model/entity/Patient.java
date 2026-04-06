@@ -32,6 +32,8 @@ public class Patient {
     @Column(nullable = false)
     private String firstName;
 
+    private String motherName;
+
     @Column(unique = false)
     @Pattern(regexp = "\\d{11}", message = "O campo [cpf] deve conter exatamente 11 dígitos")
     private String cpf;

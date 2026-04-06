@@ -42,6 +42,7 @@ public class DefaultCreatePatientUseCase implements CreatePatientUseCase {
         Patient patient = new Patient();
         patient.setTenant(tenant);
         patient.setFirstName(request.firstName());
+        patient.setMotherName(request.motherName());
         patient.setCpf(request.cpf());
         patient.setBirthDate(request.birthDate());
         patient.setGender(request.gender());
@@ -69,6 +70,7 @@ public class DefaultCreatePatientUseCase implements CreatePatientUseCase {
                 patient.getId(),
                 patient.getTenant().getId(),
                 patient.getFirstName(),
+                patient.getMotherName(),
                 patient.getCpf(),
                 patient.getBirthDate(),
                 patient.getGender(),
