@@ -49,6 +49,8 @@ public enum ApiError {
     INVALID_STATE_ALREADY_TRIAL(HttpStatus.UNPROCESSABLE_ENTITY, "error.invalidStateAlreadyTrial", "A clínica já está em período de teste."),
     INVALID_STATE_APPOINTMENT_STATUS(HttpStatus.UNPROCESSABLE_ENTITY, "error.invalidStateAppointmentStatus", "Não é possível atualizar um agendamento com o status informado."),
     INVALID_STATE_PROCEDURE_INACTIVE(HttpStatus.UNPROCESSABLE_ENTITY, "error.invalidStateProcedureInactive", "O procedimento está inativo."),
+    INVALID_STATE_EXTEND_TRIAL_ACTIVE(HttpStatus.UNPROCESSABLE_ENTITY, "error.invalidStateExtendTrialActive", "Não é possível estender o trial de uma clínica que já possui plano ativo."),
+    INVALID_STATE_EXTEND_TRIAL_CANCELED(HttpStatus.UNPROCESSABLE_ENTITY, "error.invalidStateExtendTrialCanceled", "Não é possível estender o trial de uma clínica cancelada."),
     SCHEDULE_VALIDATION(HttpStatus.UNPROCESSABLE_ENTITY, "error.scheduleValidation", "Horário ou agenda inválida."),
     SCHEDULE_START_BEFORE_END(HttpStatus.UNPROCESSABLE_ENTITY, "error.scheduleStartBeforeEnd", "O horário de início deve ser anterior ao horário de término."),
     SCHEDULE_LUNCH_ORDER(HttpStatus.UNPROCESSABLE_ENTITY, "error.scheduleLunchOrder", "O horário de início do almoço deve ser anterior ao horário de término."),

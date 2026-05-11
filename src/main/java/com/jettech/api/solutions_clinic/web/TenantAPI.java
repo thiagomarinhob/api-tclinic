@@ -3,6 +3,7 @@ package com.jettech.api.solutions_clinic.web;
 import com.jettech.api.solutions_clinic.model.usecase.subscription.CreateCheckoutSessionBody;
 import com.jettech.api.solutions_clinic.model.usecase.subscription.CreateCheckoutSessionResponse;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.ActivatePlanBody;
+import com.jettech.api.solutions_clinic.model.usecase.tenant.ExtendTrialBody;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.TenantLogoUploadUrlResponse;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.TenantResponse;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.UpdateTenantLogoBody;
@@ -166,6 +167,45 @@ public interface TenantAPI {
     })
     TenantResponse startTrial(
             @PathVariable UUID tenantId
+    ) throws AuthenticationFailedException;
+
+    @PatchMapping("/admin/tenants/{tenantId}/trial/extend")
+    @Operation(
+        summary = "Estende o período de trial de um tenant",
+        description = "Operação administrativa. Adiciona dias ao trial de um tenant em TRIAL, SUSPENDED ou PENDING_SETUP. " +
+                      "Se o tenant já está em TRIAL com data futura, os dias são somados à data atual de término. " +
+                      "Requer permissão 'admin:tenant:manage' no JWT."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                responseCode = "200",
+                description = "Trial estendido com sucesso",
+                content = @Content(schema = @Schema(implementation = TenantResponse.class))
+            ),
+            @ApiResponse(
+                responseCode = "400",
+                description = "additionalDays ausente ou fora do intervalo permitido (1–365)",
+                content = @Content
+            ),
+            @ApiResponse(
+                responseCode = "403",
+                description = "Token sem permissão admin:tenant:manage",
+                content = @Content
+            ),
+            @ApiResponse(
+                responseCode = "404",
+                description = "Tenant não encontrado",
+                content = @Content
+            ),
+            @ApiResponse(
+                responseCode = "422",
+                description = "Tenant com status ACTIVE ou CANCELED não pode ter o trial estendido",
+                content = @Content
+            )
+    })
+    TenantResponse extendTrial(
+            @PathVariable UUID tenantId,
+            @Valid @RequestBody ExtendTrialBody body
     ) throws AuthenticationFailedException;
 
     @GetMapping("/tenants/me")

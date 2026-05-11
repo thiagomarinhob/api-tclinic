@@ -59,6 +59,7 @@ public class SecurityConfig {
                                     "/swagger-ui/**",
                                     "/v3/api-docs/**"
                             ).permitAll();
+                    auth.requestMatchers("/v1/admin/**").hasAuthority("PERM_admin:tenant:manage");
                     auth.anyRequest().authenticated();
                 })
                 .exceptionHandling(exceptions -> exceptions
