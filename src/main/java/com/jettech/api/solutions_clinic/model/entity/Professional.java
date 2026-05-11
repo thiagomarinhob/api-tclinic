@@ -36,10 +36,9 @@ public class Professional {
     private Specialty specialty;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @Column(length = 10)
     private DocumentType documentType;
 
-    @Column(nullable = false)
     private String documentNumber;
 
     private String documentState;

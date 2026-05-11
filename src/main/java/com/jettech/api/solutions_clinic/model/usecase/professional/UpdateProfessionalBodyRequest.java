@@ -8,10 +8,8 @@ public record UpdateProfessionalBodyRequest(
     @NotNull(message = "O campo [specialty] é obrigatório")
     Specialty specialty,
 
-    @NotNull(message = "O campo [documentType] é obrigatório")
     DocumentType documentType,
 
-    @NotNull(message = "O campo [documentNumber] é obrigatório")
     String documentNumber,
 
     String documentState,

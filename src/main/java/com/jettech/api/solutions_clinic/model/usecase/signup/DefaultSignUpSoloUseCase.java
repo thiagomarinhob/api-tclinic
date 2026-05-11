@@ -1,11 +1,14 @@
 package com.jettech.api.solutions_clinic.model.usecase.signup;
 
+import com.jettech.api.solutions_clinic.model.entity.Professional;
 import com.jettech.api.solutions_clinic.model.entity.Role;
+import com.jettech.api.solutions_clinic.model.entity.Specialty;
 import com.jettech.api.solutions_clinic.model.entity.Tenant;
 import com.jettech.api.solutions_clinic.model.entity.TenantStatus;
 import com.jettech.api.solutions_clinic.model.entity.TypeTenant;
 import com.jettech.api.solutions_clinic.model.entity.User;
 import com.jettech.api.solutions_clinic.model.entity.UserTenantRole;
+import com.jettech.api.solutions_clinic.model.repository.ProfessionalRepository;
 import com.jettech.api.solutions_clinic.model.repository.TenantRepository;
 import com.jettech.api.solutions_clinic.model.repository.UserRepository;
 import com.jettech.api.solutions_clinic.model.repository.UserTenantRoleRepository;
@@ -26,6 +29,7 @@ public class DefaultSignUpSoloUseCase implements SignUpSoloUseCase {
     private final UserRepository userRepository;
     private final TenantRepository tenantRepository;
     private final UserTenantRoleRepository userTenantRoleRepository;
+    private final ProfessionalRepository professionalRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -46,6 +50,14 @@ public class DefaultSignUpSoloUseCase implements SignUpSoloUseCase {
         // Vincular User e Tenant com Role OWNER
         UserTenantRole userTenantRole = createUserTenantRole(user, tenant, Role.OWNER);
         userTenantRoleRepository.save(userTenantRole);
+
+        // Criar registro de Profissional para o usuário solo (especialidade padrão: Clínico Geral)
+        Professional professional = new Professional();
+        professional.setTenant(tenant);
+        professional.setUser(user);
+        professional.setSpecialty(Specialty.CLINICO_GERAL);
+        professional.setActive(true);
+        professionalRepository.save(professional);
 
         return new SignUpResponse(
             user.getId(),
