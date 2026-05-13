@@ -48,6 +48,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy compose files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          source: "docker-compose.app.yml,docker-compose.evolution.yml"
+          target: /opt/tclinic
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -64,6 +77,9 @@ jobs:
             # Baixa a nova imagem e reinicia só o backend
             docker compose -f docker-compose.app.yml pull backend
             docker compose -f docker-compose.app.yml up -d backend
+
+            # Garante que o Evolution está rodando (só sobe se não estiver)
+            docker compose -f docker-compose.evolution.yml up -d
 
             # Remove imagens antigas para liberar espaço
             docker image prune -f

@@ -43,13 +43,12 @@ stripe:
     cancel:
       path: ${STRIPE_WEBHOOK_CANCEL_PATH:/plan-selection}
 
-whatsapp:
-  webhook:
-    verify-token: ${WHATSAPP_WEBHOOK_VERIFY_TOKEN}
+evolution:
   api:
-    access-token: ${WHATSAPP_ACCESS_TOKEN}
-    version: ${WHATSAPP_API_VERSION:v25.0}
-    phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID}
+    url: ${EVOLUTION_API_URL:}
+    key: ${EVOLUTION_API_KEY:}
+    instance:
+      name: ${EVOLUTION_INSTANCE_NAME:tclinic}
 
 resend:
   api:

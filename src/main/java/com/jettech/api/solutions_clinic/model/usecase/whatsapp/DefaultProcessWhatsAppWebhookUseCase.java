@@ -20,21 +20,24 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Processa o webhook do WhatsApp: ao receber resposta de botão (Confirmar ou Desmarcar)
- * do template confirmar_agendamento, atualiza o status do agendamento correspondente.
- * <p>
- * Estrutura esperada do webhook (resposta de botão):
- * entry[].changes[].value.messages[] com type "button", context.id = id da nossa mensagem,
- * button.text ou button.payload = "Confirmar" ou "Desmarcar".
+ * Processa webhook da Evolution API V2 (Baileys).
+ *
+ * Payload esperado para resposta em texto:
+ *   event = "messages.upsert"
+ *   data.messageType = "conversation" | "extendedTextMessage"
+ *   data.message.conversation = "1" (confirmar) | "2" (cancelar)
+ *   data.message.extendedTextMessage.contextInfo.stanzaId = ID da mensagem original
+ *   data.key.remoteJid = "5511999999999@s.whatsapp.net"
+ *   data.key.fromMe = false (ignora mensagens enviadas pelo próprio sistema)
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebhookUseCase {
 
-    private static final String TYPE_BUTTON = "button";
-    private static final String CONFIRMAR = "Confirmar";
-    private static final String DESMARCAR = "Desmarcar";
+    private static final String EVENT_MESSAGES_UPSERT = "messages.upsert";
+    private static final String TEXT_CONFIRMAR = "1";
+    private static final String TEXT_CANCELAR = "2";
 
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
@@ -49,90 +52,97 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
         }
         try {
             JsonNode root = objectMapper.readTree(request.body());
-            JsonNode entries = root.path("entry");
-            if (!entries.isArray()) {
+
+            if (!EVENT_MESSAGES_UPSERT.equals(root.path("event").asText())) {
                 return;
             }
-            for (JsonNode entry : entries) {
-                processEntry(entry);
+
+            JsonNode data = root.path("data");
+
+            // Ignora mensagens enviadas pelo próprio sistema
+            if (data.path("key").path("fromMe").asBoolean(false)) {
+                return;
             }
+
+            String messageType = data.path("messageType").asText("");
+            String remoteJid   = data.path("key").path("remoteJid").asText("").trim();
+
+            String text;
+            String stanzaId;
+            if ("conversation".equals(messageType)) {
+                text      = data.path("message").path("conversation").asText("").trim();
+                stanzaId  = "";
+            } else if ("extendedTextMessage".equals(messageType)) {
+                JsonNode ext = data.path("message").path("extendedTextMessage");
+                text     = ext.path("text").asText("").trim();
+                stanzaId = ext.path("contextInfo").path("stanzaId").asText("").trim();
+            } else {
+                return;
+            }
+
+            if (!TEXT_CONFIRMAR.equals(text) && !TEXT_CANCELAR.equals(text)) {
+                log.debug("Webhook Evolution: texto '{}' não reconhecido, ignorado.", text);
+                return;
+            }
+
+            processTextResponse(text, stanzaId, remoteJid);
+
         } catch (Exception e) {
-            log.warn("Erro ao processar webhook WhatsApp: {}", e.getMessage());
+            log.warn("Erro ao processar webhook Evolution: {}", e.getMessage());
         }
     }
 
-    private void processEntry(JsonNode entry) {
-        JsonNode changes = entry.path("changes");
-        if (!changes.isArray()) return;
-        for (JsonNode change : changes) {
-            JsonNode value = change.path("value");
-            JsonNode messages = value.path("messages");
-            if (!messages.isArray()) continue;
-            for (JsonNode message : messages) {
-                processMessage(message);
-            }
-        }
-    }
+    private void processTextResponse(String text, String stanzaId, String remoteJid) {
+        Optional<Appointment> appointmentOpt = Optional.empty();
 
-    private void processMessage(JsonNode message) {
-        if (!TYPE_BUTTON.equals(message.path("type").asText(""))) {
-            return;
+        if (!stanzaId.isBlank()) {
+            appointmentOpt = appointmentRepository.findByWhatsappMessageId(stanzaId);
         }
-        String referencedMessageId = message.path("context").path("id").asText("").trim();
-        if (referencedMessageId.isBlank()) {
-            return;
-        }
-        String buttonText = getButtonText(message);
-        if (buttonText.isBlank()) {
-            return;
-        }
-        Optional<Appointment> appointmentOpt = appointmentRepository.findByWhatsappMessageId(referencedMessageId);
+
         if (appointmentOpt.isEmpty()) {
-            appointmentOpt = findAppointmentBySenderPhone(message, referencedMessageId);
+            appointmentOpt = findAppointmentBySenderJid(remoteJid, stanzaId);
             if (appointmentOpt.isEmpty()) {
-                log.warn("Webhook WhatsApp: nenhum agendamento encontrado para message_id={} (verifique se whatsapp_message_id foi gravado ao criar o agendamento)", referencedMessageId);
+                log.warn("Webhook Evolution: nenhum agendamento encontrado para stanzaId={} remoteJid={}", stanzaId, remoteJid);
                 return;
             }
-            Appointment a = appointmentOpt.get();
-            a.setWhatsappMessageId(referencedMessageId);
-            appointmentRepository.save(a);
-            log.info("Webhook WhatsApp: agendamento {} vinculado ao message_id={} (fallback por telefone)", a.getId(), referencedMessageId);
+            if (!stanzaId.isBlank()) {
+                Appointment a = appointmentOpt.get();
+                a.setWhatsappMessageId(stanzaId);
+                appointmentRepository.save(a);
+                log.info("Webhook Evolution: agendamento {} vinculado ao stanzaId={} (fallback por telefone)", a.getId(), stanzaId);
+            }
         }
+
         Appointment appointment = appointmentOpt.get();
-        if (CONFIRMAR.equalsIgnoreCase(buttonText)) {
+
+        if (TEXT_CONFIRMAR.equals(text)) {
             if (appointment.getStatus() == AppointmentStatus.AGENDADO) {
                 appointment.setStatus(AppointmentStatus.CONFIRMADO);
                 appointmentRepository.save(appointment);
                 notificationCreator.createAppointmentConfirmation(appointment);
-                log.info("Agendamento {} confirmado via WhatsApp (message_id={})", appointment.getId(), referencedMessageId);
+                log.info("Agendamento {} confirmado via WhatsApp (remoteJid={})", appointment.getId(), remoteJid);
             }
-        } else if (DESMARCAR.equalsIgnoreCase(buttonText)) {
+        } else if (TEXT_CANCELAR.equals(text)) {
             if (appointment.getStatus() == AppointmentStatus.AGENDADO || appointment.getStatus() == AppointmentStatus.CONFIRMADO) {
                 appointment.setStatus(AppointmentStatus.CANCELADO);
                 appointment.setCancelledAt(LocalDateTime.now());
                 appointmentRepository.save(appointment);
                 notificationCreator.createAppointmentCancellation(appointment);
-                log.info("Agendamento {} desmarcado via WhatsApp (message_id={})", appointment.getId(), referencedMessageId);
+                log.info("Agendamento {} cancelado via WhatsApp (remoteJid={})", appointment.getId(), remoteJid);
             }
         }
     }
 
-    /**
-     * Fallback: quando o agendamento não tem whatsapp_message_id (ex.: criado antes do recurso),
-     * busca pelo telefone do remetente o agendamento mais recente AGENDADO ou CONFIRMADO.
-     */
-    private Optional<Appointment> findAppointmentBySenderPhone(JsonNode message, String referencedMessageId) {
-        String from = message.path("from").asText("").trim();
-        if (from.isBlank()) {
-            return Optional.empty();
-        }
-        String normalizedPhone = WhatsAppNotificationService.normalizePhone(from);
+    private Optional<Appointment> findAppointmentBySenderJid(String remoteJid, String stanzaId) {
+        if (remoteJid.isBlank()) return Optional.empty();
+        String phone = remoteJid.replace("@s.whatsapp.net", "");
+        String normalizedPhone = WhatsAppNotificationService.normalizePhone(phone);
         if (normalizedPhone == null || normalizedPhone.length() < 10) {
             return Optional.empty();
         }
         List<Patient> patients = patientRepository.findByWhatsappNormalized(normalizedPhone);
         if (patients.isEmpty()) {
-            log.debug("Webhook WhatsApp: nenhum paciente com whatsapp normalizado {} (from={})", normalizedPhone, from);
+            log.debug("Webhook Evolution: nenhum paciente com whatsapp {} (jid={})", normalizedPhone, remoteJid);
             return Optional.empty();
         }
         List<UUID> patientIds = patients.stream().map(Patient::getId).toList();
@@ -140,13 +150,5 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
                 patientIds,
                 List.of(AppointmentStatus.AGENDADO, AppointmentStatus.CONFIRMADO)
         );
-    }
-
-    private String getButtonText(JsonNode message) {
-        JsonNode button = message.path("button");
-        if (button.isMissingNode()) return "";
-        String text = button.path("text").asText("");
-        if (!text.isBlank()) return text;
-        return button.path("payload").asText("");
     }
 }

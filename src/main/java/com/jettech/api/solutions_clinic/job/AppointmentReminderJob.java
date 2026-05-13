@@ -82,13 +82,8 @@ public class AppointmentReminderJob {
         String horarioConsulta = appointment.getScheduledAt().format(TIME_FMT);
         String telefoneContato = tenant.getPhone() != null ? tenant.getPhone() : "";
 
-        List<String> parameterNames = List.of(
-                "nome_paciente", "nome_clinica", "data_consulta", "horario_consulta", "telefone_contato");
-        List<String> bodyVariables = List.of(
-                nomePaciente, nomeClinica, dataConsulta, horarioConsulta, telefoneContato);
-
-        var messageIdOpt = whatsAppNotificationService.sendTemplateBodyVariablesReturningMessageId(
-                patient.getWhatsapp(), "confirmar_agendamento", "pt_BR", parameterNames, bodyVariables);
+        var messageIdOpt = whatsAppNotificationService.sendAppointmentReminderReturningMessageId(
+                patient.getWhatsapp(), nomePaciente, nomeClinica, dataConsulta, horarioConsulta, telefoneContato);
 
         messageIdOpt.ifPresent(id -> {
             appointment.setWhatsappMessageId(id);

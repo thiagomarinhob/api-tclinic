@@ -14,21 +14,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
-/**
- * Envio de notificações via WhatsApp Business API (Meta Graph API).
- * Utiliza variável de ambiente WHATSAPP_ACCESS_TOKEN para autenticação.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class WhatsAppNotificationService {
 
-    private static final String GRAPH_BASE = "https://graph.facebook.com";
     private static final Pattern NON_DIGIT = Pattern.compile("\\D");
 
     private final WhatsAppConfig whatsAppConfig;
@@ -36,166 +30,45 @@ public class WhatsAppNotificationService {
     private final ObjectMapper objectMapper;
 
     /**
-     * Envia uma mensagem de template para um número WhatsApp.
+     * Envia mensagem de confirmação de agendamento com botões via Baileys (Evolution API V2).
      *
-     * @param to Número no formato E.164 (ex: 5511999999999) ou com formatação (ex: (11) 99999-9999)
-     * @param templateName Nome do template aprovado no Meta Business (ex: hello_world)
-     * @param languageCode Código do idioma (ex: en_US, pt_BR)
-     * @return true se enviado com sucesso
+     * @return Optional com o ID da mensagem retornado pela Evolution, ou vazio em falha
      */
-    public boolean sendTemplate(String to, String templateName, String languageCode) {
+    public Optional<String> sendAppointmentReminderReturningMessageId(
+            String to,
+            String nomePaciente,
+            String nomeClinica,
+            String dataConsulta,
+            String horarioConsulta,
+            String telefoneContato) {
+
         if (!whatsAppConfig.isConfigured()) {
-            log.warn("WhatsApp não configurado; mensagem de template não enviada para {}", maskPhone(to));
-            return false;
-        }
-        if (templateName == null || templateName.isBlank()) {
-            log.warn("Nome do template WhatsApp vazio; envio ignorado para {}", maskPhone(to));
-            return false;
-        }
-        if (languageCode == null || languageCode.isBlank()) {
-            log.warn("Código de idioma do template WhatsApp vazio; envio ignorado para {}", maskPhone(to));
-            return false;
-        }
-
-        String normalizedTo = normalizePhone(to);
-        if (normalizedTo == null || normalizedTo.length() < 10) {
-            log.warn("Número WhatsApp inválido para envio: {}", maskPhone(to));
-            return false;
-        }
-
-        Map<String, Object> body = Map.of(
-                "messaging_product", "whatsapp",
-                "to", normalizedTo,
-                "type", "template",
-                "template", Map.of(
-                        "name", templateName,
-                        "language", Map.of("code", languageCode)
-                )
-        );
-
-        return postMessages(body);
-    }
-
-    /**
-     * Envia template com variáveis do corpo (body), sem nomes de parâmetro (usa "1", "2", "3"...).
-     * Para templates com variáveis nomeadas (ex.: {{nome_paciente}}), use a sobrecarga com parameterNames.
-     */
-    public boolean sendTemplateBodyVariables(String to, String templateName, String languageCode,
-                                            List<String> bodyVariables) {
-        if (bodyVariables == null || bodyVariables.isEmpty()) {
-            return sendTemplate(to, templateName, languageCode);
-        }
-        List<String> positionalNames = new java.util.ArrayList<>();
-        for (int i = 0; i < bodyVariables.size(); i++) {
-            positionalNames.add(String.valueOf(i + 1));
-        }
-        return sendTemplateBodyVariables(to, templateName, languageCode, positionalNames, bodyVariables);
-    }
-
-    /**
-     * Envia template com variáveis nomeadas (API v25+).
-     * Cada parâmetro inclui type, parameter_name (ex.: nome_paciente) e text.
-     * parameterNames e bodyVariables devem ter o mesmo tamanho e ordem do template no Meta.
-     */
-    public boolean sendTemplateBodyVariables(String to, String templateName, String languageCode,
-                                            List<String> parameterNames, List<String> bodyVariables) {
-        return sendTemplateBodyVariablesReturningMessageId(to, templateName, languageCode, parameterNames, bodyVariables)
-                .isPresent();
-    }
-
-    /**
-     * Igual a sendTemplateBodyVariables, mas retorna o ID da mensagem (wamid) retornado pela API do WhatsApp.
-     * Usado para vincular respostas do webhook (botão Confirmar/Cancelar) ao agendamento.
-     */
-    public Optional<String> sendTemplateBodyVariablesReturningMessageId(String to, String templateName, String languageCode,
-                                                                        List<String> parameterNames, List<String> bodyVariables) {
-        if (bodyVariables == null || bodyVariables.isEmpty()) {
-            return sendTemplateWithComponentsReturningMessageId(to, templateName, languageCode, null);
-        }
-        List<Map<String, Object>> parameters = new java.util.ArrayList<>();
-        for (int i = 0; i < bodyVariables.size(); i++) {
-            String name = (parameterNames != null && i < parameterNames.size() && parameterNames.get(i) != null && !parameterNames.get(i).isBlank())
-                    ? parameterNames.get(i)
-                    : String.valueOf(i + 1);
-            String value = bodyVariables.get(i) != null ? bodyVariables.get(i) : "";
-            parameters.add(Map.of(
-                    "type", "text",
-                    "parameter_name", name,
-                    "text", value
-            ));
-        }
-        List<Map<String, Object>> components = List.of(
-                Map.of("type", "body", "parameters", parameters)
-        );
-        return sendTemplateWithComponentsReturningMessageId(to, templateName, languageCode, components);
-    }
-
-    /**
-     * Envia mensagem de template com parâmetros (ex: botões, variáveis).
-     * components: lista de componentes do template conforme documentação da API.
-     */
-    public boolean sendTemplateWithComponents(String to, String templateName, String languageCode,
-                                              List<Map<String, Object>> components) {
-        return sendTemplateWithComponentsReturningMessageId(to, templateName, languageCode, components).isPresent();
-    }
-
-    /**
-     * Envia template com components e retorna o ID da mensagem (wamid) se o envio for bem-sucedido.
-     */
-    public Optional<String> sendTemplateWithComponentsReturningMessageId(String to, String templateName, String languageCode,
-                                                                          List<Map<String, Object>> components) {
-        if (!whatsAppConfig.isConfigured()) {
-            log.warn("WhatsApp não configurado; mensagem de template não enviada para {}", maskPhone(to));
-            return Optional.empty();
-        }
-        if (templateName == null || templateName.isBlank()) {
-            log.warn("Nome do template WhatsApp vazio; envio ignorado para {}", maskPhone(to));
-            return Optional.empty();
-        }
-        if (languageCode == null || languageCode.isBlank()) {
-            log.warn("Código de idioma do template WhatsApp vazio; envio ignorado para {}", maskPhone(to));
+            log.warn("Evolution API não configurada; lembrete não enviado para {}", maskPhone(to));
             return Optional.empty();
         }
 
         String normalizedTo = normalizePhone(to);
         if (normalizedTo == null || normalizedTo.length() < 10) {
-            log.warn("Número WhatsApp inválido para envio: {}", maskPhone(to));
+            log.warn("Número WhatsApp inválido: {}", maskPhone(to));
             return Optional.empty();
         }
 
-        Map<String, Object> template = new java.util.HashMap<>(Map.of(
-                "name", templateName,
-                "language", Map.of("code", languageCode)
-        ));
-        if (components != null && !components.isEmpty()) {
-            template.put("components", components);
-        }
+        String texto = String.format(
+                "Olá, %s! Você tem consulta na %s no dia %s, às %s. Dúvidas: %s.%n%n"
+                + "Responda *1* para Confirmar ✅%n"
+                + "Responda *2* para Cancelar ❌",
+                nomePaciente, nomeClinica, dataConsulta, horarioConsulta, telefoneContato);
 
         Map<String, Object> body = Map.of(
-                "messaging_product", "whatsapp",
-                "to", normalizedTo,
-                "type", "template",
-                "template", template
+                "number", normalizedTo,
+                "text", texto
         );
 
-        return postMessagesReturningMessageId(body);
-    }
-
-    private boolean postMessages(Map<String, Object> body) {
-        return postMessagesReturningMessageId(body).isPresent();
-    }
-
-    /**
-     * Envia a mensagem e retorna o ID (wamid) retornado pela API, ou vazio em caso de falha.
-     * Resposta esperada: {"messaging_product":"whatsapp","messages":[{"id":"wamid.xxx"}]}
-     */
-    private Optional<String> postMessagesReturningMessageId(Map<String, Object> body) {
-        String url = GRAPH_BASE + "/" + whatsAppConfig.getApiVersion() + "/"
-                + whatsAppConfig.getPhoneNumberId() + "/messages";
+        String url = whatsAppConfig.getApiUrl() + "/message/sendText/" + whatsAppConfig.getInstanceName();
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(whatsAppConfig.getAccessToken());
+        headers.set("apikey", whatsAppConfig.getApiKey());
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
@@ -203,28 +76,25 @@ public class WhatsAppNotificationService {
             ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null && !response.getBody().isBlank()) {
                 JsonNode root = objectMapper.readTree(response.getBody());
-                JsonNode messages = root.path("messages");
-                if (messages.isArray() && messages.size() > 0) {
-                    String messageId = messages.get(0).path("id").asText("");
-                    if (!messageId.isBlank()) {
-                        log.debug("WhatsApp mensagem enviada com sucesso, id={}", messageId);
-                        return Optional.of(messageId);
-                    }
+                String messageId = root.path("key").path("id").asText("");
+                if (!messageId.isBlank()) {
+                    log.debug("Lembrete enviado via Evolution, messageId={}", messageId);
+                    return Optional.of(messageId);
                 }
-                log.debug("WhatsApp mensagem enviada com sucesso (resposta sem id)");
+                log.debug("Lembrete enviado via Evolution (resposta sem key.id)");
                 return Optional.empty();
             }
-            log.warn("WhatsApp API respondeu com status {}: {}", response.getStatusCode(), response.getBody());
+            log.warn("Evolution API respondeu status {}: {}", response.getStatusCode(), response.getBody());
             return Optional.empty();
         } catch (Exception e) {
-            log.error("Erro ao enviar mensagem WhatsApp: {}", e.getMessage());
+            log.error("Erro ao enviar lembrete WhatsApp via Evolution: {}", e.getMessage());
             throw new ServiceUnavailableException(ApiError.WHATSAPP_SEND_FAILED);
         }
     }
 
     /**
      * Normaliza número para apenas dígitos (E.164 sem o +).
-     * Se o número começar com 0 (ex: 019...), considera que já tem DDI; caso contrário, assume Brasil (55).
+     * Se o número tiver menos de 12 dígitos e não começar com 55, assume Brasil (55).
      */
     public static String normalizePhone(String phone) {
         if (phone == null || phone.isBlank()) return null;
