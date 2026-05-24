@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.envers.Audited;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -15,6 +16,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @EqualsAndHashCode(of = "id")
+@Audited
 @Entity(name = "patients")
 @Table(uniqueConstraints = {
     @UniqueConstraint(name = "uk_patient_cpf_tenant", columnNames = {"cpf", "tenant_id"})

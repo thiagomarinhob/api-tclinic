@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.envers.Audited;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -13,6 +14,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @EqualsAndHashCode(of = "id")
+@Audited
 @Entity(name = "professionals")
 @Table(uniqueConstraints = {
     @UniqueConstraint(name = "uk_professional_user_tenant", columnNames = {"user_id", "tenant_id"})

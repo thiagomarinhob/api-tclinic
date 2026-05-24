@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Converte MedicalRecord (com JsonNode) para MedicalRecordResponse com Map,
@@ -23,6 +24,7 @@ public class MedicalRecordResponseMapper {
 
     public MedicalRecordResponse toResponse(MedicalRecord record) {
         var appointment = record.getAppointment();
+        UUID patientId = appointment.getPatient() != null ? appointment.getPatient().getId() : null;
         String patientName = appointment.getPatient() != null
                 ? nullToEmpty(appointment.getPatient().getFirstName())
                 : null;
@@ -36,6 +38,7 @@ public class MedicalRecordResponseMapper {
                 record.getId(),
                 appointment.getId(),
                 record.getTemplate().getId(),
+                patientId,
                 patientName,
                 professionalName,
                 toMap(record.getContent()),

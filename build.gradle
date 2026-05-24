@@ -10,7 +10,7 @@ description = 'solutions-clinic'
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(25)
+		languageVersion = JavaLanguageVersion.of(21)
 	}
 }
 
@@ -41,6 +41,8 @@ dependencies {
 	implementation 'com.openhtmltopdf:openhtmltopdf-core:1.0.10'
 	implementation 'com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10'
 	implementation 'io.pebbletemplates:pebble:4.1.1'
+	implementation 'org.hibernate.orm:hibernate-envers'
+	implementation 'org.springframework.boot:spring-boot-starter-aop'
 	compileOnly 'org.projectlombok:lombok'
 	implementation 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'

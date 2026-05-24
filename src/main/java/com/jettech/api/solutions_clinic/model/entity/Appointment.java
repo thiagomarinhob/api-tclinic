@@ -8,6 +8,8 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.NotAudited;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
@@ -19,6 +21,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @EqualsAndHashCode(of = "id")
+@Audited
 @Entity(name = "appointments")
 public class Appointment {
 
@@ -93,10 +96,12 @@ public class Appointment {
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
 
+    @NotAudited
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "vital_signs", columnDefinition = "jsonb")
     private JsonNode vitalSigns;
 
+    @NotAudited
     @OneToMany(mappedBy = "appointment", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AppointmentProcedure> procedures = new ArrayList<>();
 

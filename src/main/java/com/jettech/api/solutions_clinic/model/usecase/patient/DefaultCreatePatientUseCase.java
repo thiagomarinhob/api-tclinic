@@ -1,7 +1,10 @@
 package com.jettech.api.solutions_clinic.model.usecase.patient;
 
+import com.jettech.api.solutions_clinic.model.entity.ConsentType;
 import com.jettech.api.solutions_clinic.model.entity.Patient;
+import com.jettech.api.solutions_clinic.model.entity.PatientConsent;
 import com.jettech.api.solutions_clinic.model.entity.Tenant;
+import com.jettech.api.solutions_clinic.model.repository.PatientConsentRepository;
 import com.jettech.api.solutions_clinic.model.repository.PatientRepository;
 import com.jettech.api.solutions_clinic.model.repository.TenantRepository;
 import lombok.AccessLevel;
@@ -13,8 +16,10 @@ import com.jettech.api.solutions_clinic.exception.ApiError;
 import com.jettech.api.solutions_clinic.exception.AuthenticationFailedException;
 import com.jettech.api.solutions_clinic.exception.DuplicateEntityException;
 import com.jettech.api.solutions_clinic.exception.EntityNotFoundException;
+import com.jettech.api.solutions_clinic.exception.InvalidRequestException;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -23,6 +28,7 @@ public class DefaultCreatePatientUseCase implements CreatePatientUseCase {
 
     private final PatientRepository patientRepository;
     private final TenantRepository tenantRepository;
+    private final PatientConsentRepository patientConsentRepository;
     private final TenantContext tenantContext;
 
     @Override
@@ -31,6 +37,11 @@ public class DefaultCreatePatientUseCase implements CreatePatientUseCase {
         UUID tenantId = tenantContext.getRequiredClinicId();
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Clínica", tenantId));
+
+        var consent = request.treatmentConsent();
+        if (consent == null || !Boolean.TRUE.equals(consent.granted())) {
+            throw new InvalidRequestException(ApiError.CONSENT_TREATMENT_REQUIRED);
+        }
 
         if (request.cpf() != null && !request.cpf().isEmpty()) {
             patientRepository.findByCpfAndTenantId(request.cpf(), tenantId)
@@ -66,6 +77,14 @@ public class DefaultCreatePatientUseCase implements CreatePatientUseCase {
 
         patient = patientRepository.save(patient);
 
+        PatientConsent treatmentConsent = new PatientConsent();
+        treatmentConsent.setPatient(patient);
+        treatmentConsent.setConsentType(ConsentType.TREATMENT);
+        treatmentConsent.setGranted(true);
+        treatmentConsent.setGrantedAt(LocalDateTime.now());
+        treatmentConsent.setTermVersion(consent.termVersion());
+        patientConsentRepository.save(treatmentConsent);
+
         return new PatientResponse(
                 patient.getId(),
                 patient.getTenant().getId(),
@@ -96,4 +115,3 @@ public class DefaultCreatePatientUseCase implements CreatePatientUseCase {
         );
     }
 }
-

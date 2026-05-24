@@ -10,6 +10,8 @@ public enum ApiError {
 
     // --- 400 Bad Request ---
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "error.invalidRequest", "Requisição inválida."),
+    CONSENT_TREATMENT_REQUIRED(HttpStatus.BAD_REQUEST, "error.consentTreatmentRequired", "O aceite do termo de tratamento é obrigatório para cadastrar um paciente."),
+    CONSENT_TERM_VERSION_REQUIRED(HttpStatus.BAD_REQUEST, "error.consentTermVersionRequired", "A versão do termo é obrigatória."),
     INVALID_ROLE(HttpStatus.BAD_REQUEST, "error.invalidRole", "Papel inválido. Papéis válidos: OWNER, ADMIN, RECEPTION, SPECIALIST, FINANCE, READONLY."),
     VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "error.validationFailed", "Erro de validação nos dados enviados."),
     CUSTOM_PLAN_NO_CHECKOUT(HttpStatus.BAD_REQUEST, "error.customPlanNoCheckout", "Plano personalizado não pode ser pago via checkout. Entre em contato com vendas."),
@@ -42,6 +44,7 @@ public enum ApiError {
     DUPLICATE_SCHEDULE(HttpStatus.CONFLICT, "error.duplicateSchedule", "Já existe uma agenda cadastrada para este profissional no %s."),
     DUPLICATE_PATIENT_CPF(HttpStatus.CONFLICT, "error.duplicatePatientCpf", "Paciente já existe com este CPF nesta clínica."),
     DUPLICATE_USER_TENANT_ROLE(HttpStatus.CONFLICT, "error.duplicateUserTenantRole", "Usuário já está associado à clínica com este papel."),
+    CONSENT_ALREADY_REVOKED(HttpStatus.CONFLICT, "error.consentAlreadyRevoked", "Este consentimento já foi revogado."),
 
     // --- 422 Unprocessable Entity ---
     INVALID_STATE(HttpStatus.UNPROCESSABLE_ENTITY, "error.invalidState", "Estado inválido para esta operação."),

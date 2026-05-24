@@ -8,6 +8,7 @@ public record MedicalRecordResponse(
     UUID id,
     UUID appointmentId,
     UUID templateId,
+    UUID patientId,
     String patientName,
     String professionalName,
     Map<String, Object> content,
