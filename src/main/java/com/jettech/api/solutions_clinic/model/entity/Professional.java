@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.envers.Audited;
+import org.hibernate.envers.RelationTargetAuditMode;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -25,12 +26,14 @@ public class Professional {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "tenant_id", nullable = false)
     private Tenant tenant;
 
+    @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false) 
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Enumerated(EnumType.STRING)

@@ -1,13 +1,14 @@
 package com.jettech.api.solutions_clinic.audit;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.envers.DefaultRevisionEntity;
 import org.hibernate.envers.RevisionEntity;
+import org.hibernate.envers.RevisionNumber;
+import org.hibernate.envers.RevisionTimestamp;
 
+import java.io.Serializable;
+import java.util.Date;
 import java.util.UUID;
 
 @Getter
@@ -15,7 +16,17 @@ import java.util.UUID;
 @Entity
 @Table(name = "revinfo")
 @RevisionEntity(ClinicRevisionListener.class)
-public class ClinicRevisionEntity extends DefaultRevisionEntity {
+public class ClinicRevisionEntity implements Serializable {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @RevisionNumber
+    @Column(name = "rev")
+    private int id;
+
+    @RevisionTimestamp
+    @Column(name = "revtstmp")
+    private long timestamp;
 
     @Column(name = "user_id")
     private UUID userId;
@@ -29,4 +40,7 @@ public class ClinicRevisionEntity extends DefaultRevisionEntity {
     @Column(name = "ip_address", length = 45)
     private String ipAddress;
 
+    public Date getRevisionDate() {
+        return new Date(timestamp);
+    }
 }

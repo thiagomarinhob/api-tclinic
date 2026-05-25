@@ -9,6 +9,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.envers.Audited;
+import org.hibernate.envers.RelationTargetAuditMode;
 import org.hibernate.envers.NotAudited;
 import org.hibernate.type.SqlTypes;
 
@@ -31,6 +32,7 @@ public class MedicalRecord {
     @JoinColumn(name = "appointment_id", nullable = false, unique = true)
     private Appointment appointment;
 
+    @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "template_id", nullable = false)
     private MedicalRecordTemplate template;
