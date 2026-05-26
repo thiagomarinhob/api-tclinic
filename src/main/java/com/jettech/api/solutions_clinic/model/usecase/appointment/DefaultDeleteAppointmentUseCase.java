@@ -15,7 +15,6 @@ import com.jettech.api.solutions_clinic.model.service.AppointmentEmailService;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
@@ -27,15 +26,15 @@ public class DefaultDeleteAppointmentUseCase implements DeleteAppointmentUseCase
 
     @Override
     @Transactional
-    public void execute(UUID id) throws AuthenticationFailedException {
-        Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Agendamento", id));
+    public void execute(CancelAppointmentRequest request) throws AuthenticationFailedException {
+        Appointment appointment = appointmentRepository.findById(request.id())
+                .orElseThrow(() -> new EntityNotFoundException("Agendamento", request.id()));
         if (!appointment.getTenant().getId().equals(tenantContext.getRequiredClinicId())) {
             throw new ForbiddenException();
         }
-        // Ao invés de deletar, marca como cancelado
         appointment.setStatus(AppointmentStatus.CANCELADO);
         appointment.setCancelledAt(LocalDateTime.now());
+        appointment.setCancellationReason(request.reason());
         appointmentRepository.save(appointment);
 
         appointmentEmailService.sendCancellation(appointment);

@@ -9,6 +9,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -22,7 +24,7 @@ public class Procedure {
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "tenant_id", nullable = false)
-    private Tenant tenant; // Multi-tenant
+    private Tenant tenant;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "professional_id", nullable = false)
@@ -38,13 +40,19 @@ public class Procedure {
     private int estimatedDurationMinutes;
 
     @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal basePrice; // Preço base cobrado ao paciente
+    private BigDecimal basePrice;
 
     @Column(name = "professional_commission_percent", precision = 5, scale = 2)
-    private BigDecimal professionalCommissionPercent; // Para cálculos automáticos de repasse
+    private BigDecimal professionalCommissionPercent;
 
     @Column(nullable = false)
     private boolean active = true;
+
+    @Column(name = "is_combo", nullable = false)
+    private boolean isCombo = false;
+
+    @OneToMany(mappedBy = "comboProcedure", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProcedureComboItem> comboItems = new ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "created_at")

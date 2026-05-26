@@ -59,18 +59,7 @@ public class DefaultCreateProcedureUseCase implements CreateProcedureUseCase {
 
         procedure = procedureRepository.save(procedure);
 
-        return new ProcedureResponse(
-                procedure.getId(),
-                procedure.getTenant().getId(),
-                procedure.getName(),
-                procedure.getDescription(),
-                procedure.getEstimatedDurationMinutes(),
-                procedure.getBasePrice(),
-                procedure.getProfessionalCommissionPercent(),
-                procedure.isActive(),
-                procedure.getCreatedAt(),
-                procedure.getUpdatedAt()
-        );
+        return ProcedureResponse.from(procedure);
     }
     
     private UUID getUserIdFromContext() {

@@ -28,17 +28,6 @@ public class DefaultGetProcedureByIdUseCase implements GetProcedureByIdUseCase {
         if (!procedure.getTenant().getId().equals(tenantContext.getRequiredClinicId())) {
             throw new ForbiddenException();
         }
-        return new ProcedureResponse(
-                procedure.getId(),
-                procedure.getTenant().getId(),
-                procedure.getName(),
-                procedure.getDescription(),
-                procedure.getEstimatedDurationMinutes(),
-                procedure.getBasePrice(),
-                procedure.getProfessionalCommissionPercent(),
-                procedure.isActive(),
-                procedure.getCreatedAt(),
-                procedure.getUpdatedAt()
-        );
+        return ProcedureResponse.from(procedure);
     }
 }

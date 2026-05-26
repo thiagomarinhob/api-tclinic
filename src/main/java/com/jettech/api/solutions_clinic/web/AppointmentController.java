@@ -65,8 +65,9 @@ public class AppointmentController implements AppointmentAPI {
     }
 
     @Override
-    public void deleteAppointment(@PathVariable UUID id) throws AuthenticationFailedException {
-        deleteAppointmentUseCase.execute(id);
+    public void deleteAppointment(@PathVariable UUID id, @RequestBody(required = false) Map<String, String> body) throws AuthenticationFailedException {
+        String reason = body != null ? body.get("reason") : null;
+        deleteAppointmentUseCase.execute(new CancelAppointmentRequest(id, reason));
     }
 
     @Override

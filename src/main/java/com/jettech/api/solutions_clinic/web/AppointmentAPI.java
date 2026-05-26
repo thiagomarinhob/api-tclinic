@@ -73,7 +73,7 @@ public interface AppointmentAPI {
             @ApiResponse(responseCode = "200", description = "Agendamento cancelado com sucesso", content = @Content),
             @ApiResponse(responseCode = "404", description = "Agendamento não encontrado", content = @Content)
     })
-    void deleteAppointment(@PathVariable UUID id) throws AuthenticationFailedException;
+    void deleteAppointment(@PathVariable UUID id, @RequestBody(required = false) Map<String, String> body) throws AuthenticationFailedException;
 
     @GetMapping("/tenants/{tenantId}/appointments")
     @Operation(summary = "Lista agendamentos de uma clínica", description = "Retorna todos os agendamentos de uma clínica com filtros opcionais de data, intervalo de datas, status e ordenação.")

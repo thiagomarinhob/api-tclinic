@@ -1,6 +1,7 @@
 package com.jettech.api.solutions_clinic.web;
 
 import com.jettech.api.solutions_clinic.model.usecase.procedure.*;
+
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import java.util.UUID;
 public class ProcedureController implements ProcedureAPI {
 
     private final CreateProcedureUseCase createProcedureUseCase;
+    private final CreateComboProcedureUseCase createComboProcedureUseCase;
     private final GetProcedureByIdUseCase getProcedureByIdUseCase;
     private final GetProceduresByTenantUseCase getProceduresByTenantUseCase;
     private final UpdateProcedureUseCase updateProcedureUseCase;
@@ -25,6 +27,11 @@ public class ProcedureController implements ProcedureAPI {
     @Override
     public ProcedureResponse createProcedure(@Valid @RequestBody CreateProcedureRequest request) throws AuthenticationFailedException {
         return createProcedureUseCase.execute(request);
+    }
+
+    @Override
+    public ProcedureResponse createComboProcedure(@Valid @RequestBody CreateComboProcedureRequest request) throws AuthenticationFailedException {
+        return createComboProcedureUseCase.execute(request);
     }
 
     @Override

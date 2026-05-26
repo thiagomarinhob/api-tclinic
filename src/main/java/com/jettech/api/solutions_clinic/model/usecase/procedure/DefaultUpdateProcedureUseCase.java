@@ -46,17 +46,6 @@ public class DefaultUpdateProcedureUseCase implements UpdateProcedureUseCase {
 
         Procedure savedProcedure = procedureRepository.save(procedure);
 
-        return new ProcedureResponse(
-                savedProcedure.getId(),
-                savedProcedure.getTenant().getId(),
-                savedProcedure.getName(),
-                savedProcedure.getDescription(),
-                savedProcedure.getEstimatedDurationMinutes(),
-                savedProcedure.getBasePrice(),
-                savedProcedure.getProfessionalCommissionPercent(),
-                savedProcedure.isActive(),
-                savedProcedure.getCreatedAt(),
-                savedProcedure.getUpdatedAt()
-        );
+        return ProcedureResponse.from(savedProcedure);
     }
 }

@@ -43,11 +43,12 @@ public class AppointmentResponseMapper {
                 appointment.getPaymentMethod(),
                 appointment.getPaymentStatus(),
                 appointment.getPaidAt(),
-                appointment.getCreatedBy().getId(),
+                appointment.getCreatedBy() != null ? appointment.getCreatedBy().getId() : null,
                 appointment.getCreatedAt(),
                 appointment.getUpdatedAt(),
                 appointment.getVitalSigns() != null ? appointment.getVitalSigns().toString() : null,
-                procedures
+                procedures,
+                appointment.getCancellationReason()
         );
     }
 }

@@ -58,6 +58,9 @@ public class Appointment {
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
+    @Column(name = "cancellation_reason", columnDefinition = "TEXT")
+    private String cancellationReason;
+
     /** Preenchido quando o lembrete de 2h antes é enviado ao paciente (evita reenvio). */
     @Column(name = "reminder_sent_at")
     private LocalDateTime reminderSentAt;

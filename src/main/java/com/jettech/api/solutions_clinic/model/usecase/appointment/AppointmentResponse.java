@@ -32,6 +32,7 @@ public record AppointmentResponse(
     LocalDateTime createdAt,
     LocalDateTime updatedAt,
     @JsonRawValue String vitalSigns,
-    List<AppointmentProcedureResponse> procedures
+    List<AppointmentProcedureResponse> procedures,
+    String cancellationReason
 ) {
 }

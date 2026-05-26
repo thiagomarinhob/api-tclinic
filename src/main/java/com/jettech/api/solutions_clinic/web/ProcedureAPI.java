@@ -1,5 +1,6 @@
 package com.jettech.api.solutions_clinic.web;
 
+import com.jettech.api.solutions_clinic.model.usecase.procedure.CreateComboProcedureRequest;
 import com.jettech.api.solutions_clinic.model.usecase.procedure.CreateProcedureRequest;
 import com.jettech.api.solutions_clinic.model.usecase.procedure.ProcedureResponse;
 import com.jettech.api.solutions_clinic.model.usecase.procedure.UpdateProcedureActiveBodyRequest;
@@ -30,12 +31,22 @@ public interface ProcedureAPI {
     @PostMapping("/procedures")
     @Operation(summary = "Cria um novo procedimento", description = "Registra um novo procedimento no sistema associado a uma clínica.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Procedimento criado com sucesso", 
+            @ApiResponse(responseCode = "200", description = "Procedimento criado com sucesso",
                     content = @Content(schema = @Schema(implementation = ProcedureResponse.class))),
             @ApiResponse(responseCode = "400", description = "Dados inválidos", content = @Content),
             @ApiResponse(responseCode = "404", description = "Clínica não encontrada", content = @Content)
     })
     ProcedureResponse createProcedure(@Valid @RequestBody CreateProcedureRequest request) throws AuthenticationFailedException;
+
+    @PostMapping("/procedures/combo")
+    @Operation(summary = "Cria um combo de procedimentos", description = "Cria um procedimento do tipo combo agrupando dois ou mais procedimentos existentes com preço personalizado.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Combo criado com sucesso",
+                    content = @Content(schema = @Schema(implementation = ProcedureResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Procedimento ou clínica não encontrada", content = @Content)
+    })
+    ProcedureResponse createComboProcedure(@Valid @RequestBody CreateComboProcedureRequest request) throws AuthenticationFailedException;
 
     @GetMapping("/procedures")
     @Operation(
