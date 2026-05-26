@@ -15,6 +15,10 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        envers:
+          audit_table_suffix: _AUD
+          revision_field_name: rev
+          store_data_at_delete: true
   flyway:
     enabled: true
     baseline-on-migrate: true

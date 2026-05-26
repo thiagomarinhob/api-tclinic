@@ -8,6 +8,9 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.RelationTargetAuditMode;
+import org.hibernate.envers.NotAudited;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
@@ -16,6 +19,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @EqualsAndHashCode(of = "id")
+@Audited
 @Entity
 @Table(name = "medical_records")
 public class MedicalRecord {
@@ -28,6 +32,7 @@ public class MedicalRecord {
     @JoinColumn(name = "appointment_id", nullable = false, unique = true)
     private Appointment appointment;
 
+    @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "template_id", nullable = false)
     private MedicalRecordTemplate template;
@@ -36,6 +41,7 @@ public class MedicalRecord {
     @Column(nullable = false, columnDefinition = "jsonb")
     private JsonNode content;
 
+    @NotAudited
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "vital_signs", columnDefinition = "jsonb")
     private JsonNode vitalSigns;

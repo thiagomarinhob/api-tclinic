@@ -21,7 +21,10 @@ public class WhatsAppWebhookController {
 
     @PostMapping
     public ResponseEntity<Void> receive(@RequestBody String body) throws AuthenticationFailedException {
-        log.info("Webhook Evolution recebido: {}", body);
+        if (body == null || !body.contains("\"messages.upsert\"")) {
+            return ResponseEntity.ok().build();
+        }
+        log.debug("Webhook Evolution recebido: {}", body);
         processWhatsAppWebhookUseCase.execute(new ProcessWhatsAppWebhookRequest(body));
         return ResponseEntity.ok().build();
     }

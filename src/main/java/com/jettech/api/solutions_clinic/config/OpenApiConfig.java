@@ -21,9 +21,9 @@ public class OpenApiConfig {
                                         .scheme("bearer")
                                         .bearerFormat("JWT")))
                 .info(new Info()
-                        .title("Basket API")
+                        .title("TClinic API")
                         .version("v1")
-                        .description("API para gerenciamento de ligas de basquete."))
+                        .description("API para gestao de clinicas, pacientes, profissionais, agendamentos, prontuarios, exames, laboratorio, financeiro e assinaturas."))
                 .addSecurityItem(new SecurityRequirement().addList("bearer-key"));
     }
 }

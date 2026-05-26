@@ -2,6 +2,8 @@ package com.jettech.api.solutions_clinic.model.usecase.patient;
 
 import com.jettech.api.solutions_clinic.model.entity.BloodType;
 import com.jettech.api.solutions_clinic.model.entity.Gender;
+import com.jettech.api.solutions_clinic.model.usecase.consent.TreatmentConsentRequest;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -51,7 +53,11 @@ public record CreatePatientRequest(
 
     String guardianName,
     String guardianPhone,
-    String guardianRelationship
+    String guardianRelationship,
+
+    @NotNull(message = "O campo [treatmentConsent] é obrigatório")
+    @Valid
+    TreatmentConsentRequest treatmentConsent
 ) {
 }
 

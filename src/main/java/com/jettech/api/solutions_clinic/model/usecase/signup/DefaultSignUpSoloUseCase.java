@@ -37,6 +37,7 @@ public class DefaultSignUpSoloUseCase implements SignUpSoloUseCase {
     public SignUpResponse execute(SignUpSoloRequest request) throws AuthenticationFailedException {
         // Validações
         validateEmailNotExists(request.email());
+        validateCpfNotExists(request.cpf());
         validateSubdomainNotExists(request.subdomain());
 
         // Criar Tenant (para SOLO, não precisa de CNPJ)
@@ -71,6 +72,12 @@ public class DefaultSignUpSoloUseCase implements SignUpSoloUseCase {
     private void validateEmailNotExists(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
             throw new DuplicateEntityException(ApiError.DUPLICATE_EMAIL);
+        });
+    }
+
+    private void validateCpfNotExists(String cpf) {
+        userRepository.findByCpf(cpf).ifPresent(user -> {
+            throw new DuplicateEntityException(ApiError.DUPLICATE_CPF);
         });
     }
 
