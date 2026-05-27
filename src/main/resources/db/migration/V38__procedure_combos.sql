@@ -1,4 +1,4 @@
--- V34: Add combo support to procedures
+-- V38: Add combo support to procedures
 
 ALTER TABLE procedures ADD COLUMN is_combo BOOLEAN NOT NULL DEFAULT FALSE;
 

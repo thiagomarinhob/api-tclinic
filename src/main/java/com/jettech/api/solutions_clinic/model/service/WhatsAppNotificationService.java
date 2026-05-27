@@ -93,16 +93,24 @@ public class WhatsAppNotificationService {
     }
 
     /**
-     * Normaliza número para apenas dígitos (E.164 sem o +).
-     * Se o número tiver menos de 12 dígitos e não começar com 55, assume Brasil (55).
+     * Normaliza número para apenas dígitos (E.164 sem o +), corrigindo o 9º dígito
+     * de celulares brasileiros armazenados no formato antigo (8 dígitos após o DDD).
      */
     public static String normalizePhone(String phone) {
         if (phone == null || phone.isBlank()) return null;
         String digits = NON_DIGIT.matcher(phone).replaceAll("");
         if (digits.isEmpty()) return null;
-        if (digits.length() >= 12) return digits;
-        if (digits.length() >= 10 && digits.startsWith("55")) return digits;
-        if (digits.length() >= 10) return "55" + digits;
+
+        // Adiciona DDI Brasil se ausente
+        if (digits.length() >= 10 && !digits.startsWith("55")) {
+            digits = "55" + digits;
+        }
+
+        // Celular BR antigo: 55 + DDD(2) + 8 dígitos = 12 → insere 9 após o DDD
+        if (digits.length() == 12 && digits.startsWith("55")) {
+            digits = digits.substring(0, 4) + "9" + digits.substring(4);
+        }
+
         return digits;
     }
 
