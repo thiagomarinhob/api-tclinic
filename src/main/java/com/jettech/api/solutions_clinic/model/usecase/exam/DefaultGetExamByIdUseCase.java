@@ -8,11 +8,13 @@ import com.jettech.api.solutions_clinic.exception.ForbiddenException;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultGetExamByIdUseCase implements GetExamByIdUseCase {
@@ -23,11 +25,15 @@ public class DefaultGetExamByIdUseCase implements GetExamByIdUseCase {
     @Override
     @Transactional(readOnly = true)
     public ExamResponse execute(UUID id) throws AuthenticationFailedException {
+        log.info("Buscando exame por id: {}", id);
         Exam exam = examRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Exame", id));
-        if (!exam.getTenant().getId().equals(tenantContext.getRequiredClinicId())) {
+        UUID tenantId = tenantContext.getRequiredClinicId();
+        if (!exam.getTenant().getId().equals(tenantId)) {
+            log.warn("Acesso negado ao exame {} - tenantId do contexto: {}", id, tenantId);
             throw new ForbiddenException();
         }
+        log.info("Exame {} encontrado - status: {}", id, exam.getStatus());
         return DefaultCreateExamUseCase.toResponse(exam);
     }
 }

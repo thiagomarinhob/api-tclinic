@@ -5,6 +5,7 @@ import com.jettech.api.solutions_clinic.model.repository.ProfessionalRepository;
 import com.jettech.api.solutions_clinic.model.repository.TenantRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,7 @@ import com.jettech.api.solutions_clinic.exception.AuthenticationFailedException;
 import com.jettech.api.solutions_clinic.exception.EntityNotFoundException;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultGetProfessionalsByClinicUseCase implements GetProfessionalsByClinicUseCase {
@@ -27,6 +29,8 @@ public class DefaultGetProfessionalsByClinicUseCase implements GetProfessionalsB
     @Override
     @Transactional(readOnly = true)
     public Page<ProfessionalResponse> execute(GetProfessionalsByClinicRequest request) throws AuthenticationFailedException {
+        log.info("Listando profissionais da clínica - clinicId: {}, active: {}, page: {}, size: {}",
+                request.clinicId(), request.active(), request.page(), request.size());
         tenantContext.requireSameTenant(request.clinicId());
         tenantRepository.findById(request.clinicId())
                 .orElseThrow(() -> new EntityNotFoundException("Clínica", request.clinicId()));
@@ -44,6 +48,7 @@ public class DefaultGetProfessionalsByClinicUseCase implements GetProfessionalsB
         );
 
         // Converter para Page<ProfessionalResponse>
+        log.info("Profissionais encontrados para clinicId: {} - total: {}", request.clinicId(), professionalsPage.getTotalElements());
         return professionalsPage.map(this::toResponse);
     }
 

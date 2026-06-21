@@ -44,6 +44,9 @@ public class DefaultCreateAppointmentUseCase implements CreateAppointmentUseCase
     @Transactional
     public AppointmentResponse execute(CreateAppointmentRequest request) throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Criando agendamento | tenantId={} | patientId={} | professionalId={} | scheduledAt={} | durationMinutes={}",
+                tenantId, request.patientId(), request.professionalId(), request.scheduledAt(), request.durationMinutes());
+
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Clínica", tenantId));
 
@@ -57,6 +60,7 @@ public class DefaultCreateAppointmentUseCase implements CreateAppointmentUseCase
         if (request.roomId() != null) {
             room = roomRepository.findById(request.roomId())
                     .orElseThrow(() -> new EntityNotFoundException("Sala", request.roomId()));
+            log.debug("Sala vinculada | roomId={}", request.roomId());
         }
 
         User createdBy = userRepository.findById(request.createdBy())
@@ -73,6 +77,8 @@ public class DefaultCreateAppointmentUseCase implements CreateAppointmentUseCase
             if (request.totalValue() == null || request.totalValue().compareTo(BigDecimal.ZERO) == 0) {
                 calculatedTotalValue = loadResult.totalValueFromProcedures();
             }
+            log.info("Procedimentos carregados | quantidade={} | duracaoCalculada={}min | valorTotal={}",
+                    procedures.size(), calculatedDurationMinutes, calculatedTotalValue);
         }
 
         professionalScheduleValidator.validate(professional.getId(), request.scheduledAt(), calculatedDurationMinutes);
@@ -86,7 +92,13 @@ public class DefaultCreateAppointmentUseCase implements CreateAppointmentUseCase
                 PROFESSIONAL_CONFLICT_MESSAGE
         );
         if (professionalConflict != null && !request.forceSchedule()) {
+            log.warn("Conflito de horário detectado e agendamento bloqueado | professionalId={} | scheduledAt={}",
+                    professional.getId(), request.scheduledAt());
             throw new AppointmentConflictException(professionalConflict);
+        }
+        if (professionalConflict != null) {
+            log.warn("Conflito de horário ignorado via forceSchedule | professionalId={} | scheduledAt={}",
+                    professional.getId(), request.scheduledAt());
         }
 
         Appointment appointment = new Appointment();
@@ -103,6 +115,8 @@ public class DefaultCreateAppointmentUseCase implements CreateAppointmentUseCase
         appointment.setCreatedBy(createdBy);
 
         appointment = appointmentRepository.save(appointment);
+        log.info("Agendamento salvo | appointmentId={} | status={} | paymentStatus={}",
+                appointment.getId(), appointment.getStatus(), appointment.getPaymentStatus());
 
         if (!procedures.isEmpty()) {
             for (Procedure procedure : procedures) {
@@ -113,10 +127,21 @@ public class DefaultCreateAppointmentUseCase implements CreateAppointmentUseCase
                 appointment.getProcedures().add(appointmentProcedure);
             }
             appointment = appointmentRepository.save(appointment);
+            log.info("Procedimentos vinculados ao agendamento | appointmentId={} | quantidade={}",
+                    appointment.getId(), appointment.getProcedures().size());
         }
 
-        appointmentEmailService.sendConfirmation(appointment);
+        try {
+            appointmentEmailService.sendConfirmation(appointment);
+            log.info("E-mail de confirmação enviado | appointmentId={} | patientId={}",
+                    appointment.getId(), patient.getId());
+        } catch (Exception e) {
+            log.error("Falha ao enviar e-mail de confirmação | appointmentId={} | erro={}",
+                    appointment.getId(), e.getMessage(), e);
+        }
 
+        log.info("Agendamento criado com sucesso | appointmentId={} | tenantId={} | scheduledAt={}",
+                appointment.getId(), tenantId, appointment.getScheduledAt());
         return appointmentResponseMapper.toResponse(appointment);
     }
 

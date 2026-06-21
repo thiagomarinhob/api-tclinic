@@ -25,11 +25,12 @@ public class DefaultUpdateTenantPlanUseCase implements UpdateTenantPlanUseCase {
     @Override
     @Transactional
     public TenantResponse execute(UpdateTenantPlanRequest request) throws AuthenticationFailedException {
+        log.info("Atualizando plano do tenant - tenantId: {}, novoPlanType: {}", request.tenantId(), request.planType());
         tenantContext.requireSameTenant(request.tenantId());
         Tenant tenant = tenantRepository.findById(request.tenantId())
                 .orElseThrow(() -> new EntityNotFoundException("Clínica", request.tenantId()));
-        log.info("id clinica {}", request.tenantId());
 
+        PlanType planTypeAnterior = tenant.getPlanType();
         // Atualizar o plano
         // Nota: Para ativar o plano via pagamento, use o endpoint de checkout
         // Este endpoint apenas atualiza o tipo de plano, mas não ativa o tenant
@@ -40,6 +41,8 @@ public class DefaultUpdateTenantPlanUseCase implements UpdateTenantPlanUseCase {
         // Para outros planos, a ativação será feita pelo webhook do Stripe quando o pagamento for aprovado
 
         tenant = tenantRepository.save(tenant);
+        log.info("Plano do tenant atualizado - tenantId: {}, planTypeAnterior: {}, planTypeNovo: {}",
+                tenant.getId(), planTypeAnterior, tenant.getPlanType());
 
         return toResponse(tenant);
     }

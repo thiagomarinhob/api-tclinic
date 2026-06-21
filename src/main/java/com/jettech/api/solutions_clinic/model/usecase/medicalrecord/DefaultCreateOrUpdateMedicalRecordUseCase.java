@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import com.jettech.api.solutions_clinic.exception.ForbiddenException;
 import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultCreateOrUpdateMedicalRecordUseCase implements CreateOrUpdateMedicalRecordUseCase {
@@ -38,10 +40,13 @@ public class DefaultCreateOrUpdateMedicalRecordUseCase implements CreateOrUpdate
     @Transactional
     public MedicalRecordResponse execute(CreateOrUpdateMedicalRecordRequest request) throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Criando/atualizando prontuário - tenantId: {}, appointmentId: {}, templateId: {}",
+                tenantId, request.appointmentId(), request.templateId());
 
         Appointment appointment = appointmentRepository.findById(request.appointmentId())
                 .orElseThrow(() -> new EntityNotFoundException("Agendamento", request.appointmentId()));
         if (!appointment.getTenant().getId().equals(tenantId)) {
+            log.warn("Acesso negado ao prontuário - agendamento {} não pertence ao tenantId: {}", request.appointmentId(), tenantId);
             throw new ForbiddenException(com.jettech.api.solutions_clinic.exception.ApiError.ACCESS_DENIED);
         }
 
@@ -67,6 +72,7 @@ public class DefaultCreateOrUpdateMedicalRecordUseCase implements CreateOrUpdate
         record.setVitalSigns(request.vitalSigns() != null ? toJsonNode(request.vitalSigns()) : null);
 
         record = medicalRecordRepository.save(record);
+        log.info("Prontuário salvo - recordId: {}, appointmentId: {}", record.getId(), request.appointmentId());
         return responseMapper.toResponse(record);
     }
 

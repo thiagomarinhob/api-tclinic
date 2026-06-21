@@ -8,6 +8,7 @@ import com.jettech.api.solutions_clinic.model.repository.*;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultCreateLabOrderUseCase implements CreateLabOrderUseCase {
@@ -33,12 +35,16 @@ public class DefaultCreateLabOrderUseCase implements CreateLabOrderUseCase {
     @Transactional
     public LabOrderResponse execute(CreateLabOrderBodyRequest request) throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Criando pedido laboratorial - tenantId: {}, patientId: {}, itens: {}",
+                tenantId, request.patientId(), request.items() != null ? request.items().size() : 0);
+
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Clínica", tenantId));
 
         Patient patient = patientRepository.findById(request.patientId())
                 .orElseThrow(() -> new EntityNotFoundException("Paciente", request.patientId()));
         if (!patient.getTenant().getId().equals(tenantId)) {
+            log.warn("Acesso negado ao criar pedido lab - paciente {} não pertence ao tenantId: {}", request.patientId(), tenantId);
             throw new ForbiddenException();
         }
 
@@ -91,6 +97,8 @@ public class DefaultCreateLabOrderUseCase implements CreateLabOrderUseCase {
         order.setItems(items);
 
         order = labOrderRepository.save(order);
+        log.info("Pedido laboratorial criado - orderId: {}, tenantId: {}, patientId: {}, status: {}, itens: {}",
+                order.getId(), tenantId, patient.getId(), order.getStatus(), order.getItems().size());
         return toResponse(order);
     }
 

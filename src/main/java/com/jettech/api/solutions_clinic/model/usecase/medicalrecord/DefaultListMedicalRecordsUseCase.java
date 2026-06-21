@@ -6,6 +6,7 @@ import com.jettech.api.solutions_clinic.model.repository.ProfessionalRepository;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -15,6 +16,7 @@ import com.jettech.api.solutions_clinic.exception.AuthenticationFailedException;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultListMedicalRecordsUseCase implements ListMedicalRecordsUseCase {
@@ -33,6 +35,7 @@ public class DefaultListMedicalRecordsUseCase implements ListMedicalRecordsUseCa
     ) throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
         UUID userId = tenantContext.getUserIdOrNull();
+        log.info("Listando prontuários - tenantId: {}, userId: {}, page: {}, size: {}", tenantId, userId, page, size);
 
         // Profissional logado: filtrar apenas prontuários dos agendamentos dele; clínica vê todos
         UUID professionalId = (userId != null)
@@ -44,7 +47,7 @@ public class DefaultListMedicalRecordsUseCase implements ListMedicalRecordsUseCa
         String searchName = (patientName != null && !patientName.isBlank()) ? patientName.trim() : null;
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        return medicalRecordRepository.findPageByTenantAndFilters(
+        var result = medicalRecordRepository.findPageByTenantAndFilters(
             tenantId,
             professionalId,
             searchName,
@@ -52,5 +55,7 @@ public class DefaultListMedicalRecordsUseCase implements ListMedicalRecordsUseCa
             dateTo,
             pageable
         );
+        log.info("Prontuários encontrados - tenantId: {}, total: {}", tenantId, result.getTotalElements());
+        return result;
     }
 }

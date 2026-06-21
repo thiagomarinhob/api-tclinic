@@ -11,6 +11,7 @@ import com.jettech.api.solutions_clinic.exception.ApiError;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,7 @@ import java.util.UUID;
  * Gera URL pré-assinada para o frontend fazer upload do arquivo de resultado diretamente ao R2.
  * Só permite exames em REQUESTED ou PENDING_RESULT.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultGetPresignedUploadUrlUseCase implements GetPresignedUploadUrlUseCase {
@@ -34,16 +36,21 @@ public class DefaultGetPresignedUploadUrlUseCase implements GetPresignedUploadUr
     @Transactional(readOnly = true)
     public PresignedUploadUrlResponse execute(GetPresignedUploadUrlRequest request) throws AuthenticationFailedException {
         if (!r2StorageService.isConfigured()) {
+            log.error("R2 storage não configurado - não é possível gerar URL de upload");
             throw new ServiceUnavailableException(ApiError.R2_NOT_CONFIGURED);
         }
 
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Gerando URL de upload de resultado - tenantId: {}, examId: {}", tenantId, request.examId());
+
         Exam exam = examRepository.findById(request.examId())
                 .orElseThrow(() -> new EntityNotFoundException("Exame", request.examId()));
         if (!exam.getTenant().getId().equals(tenantId)) {
+            log.warn("Acesso negado - exame {} não pertence ao tenantId: {}", request.examId(), tenantId);
             throw new ForbiddenException();
         }
         if (exam.getStatus() == com.jettech.api.solutions_clinic.model.entity.ExamStatus.COMPLETED) {
+            log.warn("Upload bloqueado - exame {} já está com status COMPLETED", request.examId());
             throw new com.jettech.api.solutions_clinic.exception.InvalidStateException(ApiError.INVALID_STATE);
         }
 
@@ -52,9 +59,12 @@ public class DefaultGetPresignedUploadUrlUseCase implements GetPresignedUploadUr
 
         String uploadUrl = r2StorageService.createPresignedPutUrl(objectKey, PRESIGNED_EXPIRY_MINUTES);
         if (uploadUrl == null) {
+            log.error("Falha ao gerar URL de upload R2 para examId: {}", exam.getId());
             throw new ServiceUnavailableException(ApiError.R2_NOT_CONFIGURED);
         }
 
+        log.info("URL de upload gerada com sucesso - examId: {}, objectKey: {}, expiryMinutes: {}",
+                exam.getId(), objectKey, PRESIGNED_EXPIRY_MINUTES);
         return new PresignedUploadUrlResponse(uploadUrl, objectKey, PRESIGNED_EXPIRY_MINUTES);
     }
 

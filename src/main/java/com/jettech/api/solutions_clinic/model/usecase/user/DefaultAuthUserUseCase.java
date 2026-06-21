@@ -6,6 +6,7 @@ import com.jettech.api.solutions_clinic.model.repository.UserRepository;
 import com.jettech.api.solutions_clinic.model.repository.UserTenantRoleRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,6 +18,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultAuthUserUseCase implements AuthUserUseCase {
@@ -35,13 +37,16 @@ public class DefaultAuthUserUseCase implements AuthUserUseCase {
     @Override
     @Transactional(readOnly = true)
     public AuthUserResponse execute(AuthUserRequest authUserRequest) throws AuthenticationFailedException {
+        log.info("Tentativa de autenticação - email: {}", authUserRequest.email());
         var user = this.userRepository.findByEmail(authUserRequest.email()).orElseThrow(() -> {
+            log.warn("Usuário não encontrado para autenticação - email: {}", authUserRequest.email());
             throw new UsernameNotFoundException("Username/password invalido");
         });
 
         var passwordMatches = passwordEncoder.matches(authUserRequest.password(), user.getPassword());
 
         if(!passwordMatches) {
+            log.warn("Senha incorreta na autenticação - email: {}", authUserRequest.email());
             throw new AuthenticationFailedException();
         }
 
@@ -77,6 +82,7 @@ public class DefaultAuthUserUseCase implements AuthUserUseCase {
         
         var token = tokenBuilder.sign(algorithm);
 
+        log.info("Autenticação bem-sucedida - userId: {}, email: {}, tenantId: {}", user.getId(), user.getEmail(), tenantId);
         return new AuthUserResponse(token, expiresIn.toEpochMilli());
 
     }

@@ -10,11 +10,13 @@ import com.jettech.api.solutions_clinic.model.repository.TenantRepository;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultCreateLabExamTypeUseCase implements CreateLabExamTypeUseCase {
@@ -27,6 +29,7 @@ public class DefaultCreateLabExamTypeUseCase implements CreateLabExamTypeUseCase
     @Transactional
     public LabExamTypeResponse execute(CreateLabExamTypeRequest request) throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Criando tipo de exame lab - tenantId: {}, code: {}, name: {}", tenantId, request.code(), request.name());
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Clínica", tenantId));
 
@@ -43,6 +46,7 @@ public class DefaultCreateLabExamTypeUseCase implements CreateLabExamTypeUseCase
         examType.setActive(true);
 
         examType = labExamTypeRepository.save(examType);
+        log.info("Tipo de exame lab criado - examTypeId: {}, tenantId: {}, code: {}", examType.getId(), tenantId, examType.getCode());
         return toResponse(examType);
     }
 

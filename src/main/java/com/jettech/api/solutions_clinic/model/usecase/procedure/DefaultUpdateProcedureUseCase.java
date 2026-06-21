@@ -4,6 +4,7 @@ import com.jettech.api.solutions_clinic.model.entity.Procedure;
 import com.jettech.api.solutions_clinic.model.repository.ProcedureRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,7 +12,9 @@ import com.jettech.api.solutions_clinic.exception.AuthenticationFailedException;
 import com.jettech.api.solutions_clinic.exception.EntityNotFoundException;
 import com.jettech.api.solutions_clinic.exception.ForbiddenException;
 import com.jettech.api.solutions_clinic.security.TenantContext;
+import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultUpdateProcedureUseCase implements UpdateProcedureUseCase {
@@ -22,9 +25,12 @@ public class DefaultUpdateProcedureUseCase implements UpdateProcedureUseCase {
     @Override
     @Transactional
     public ProcedureResponse execute(UpdateProcedureRequest request) throws AuthenticationFailedException {
+        log.info("Atualizando procedimento - procedureId: {}", request.id());
         Procedure procedure = procedureRepository.findById(request.id())
                 .orElseThrow(() -> new EntityNotFoundException("Procedimento", request.id()));
-        if (!procedure.getTenant().getId().equals(tenantContext.getRequiredClinicId())) {
+        UUID tenantId = tenantContext.getRequiredClinicId();
+        if (!procedure.getTenant().getId().equals(tenantId)) {
+            log.warn("Acesso negado ao atualizar procedimento {} - tenantId: {}", request.id(), tenantId);
             throw new ForbiddenException();
         }
         // Atualizar campos se fornecidos
@@ -45,6 +51,7 @@ public class DefaultUpdateProcedureUseCase implements UpdateProcedureUseCase {
         }
 
         Procedure savedProcedure = procedureRepository.save(procedure);
+        log.info("Procedimento atualizado - procedureId: {}", savedProcedure.getId());
 
         return ProcedureResponse.from(savedProcedure);
     }

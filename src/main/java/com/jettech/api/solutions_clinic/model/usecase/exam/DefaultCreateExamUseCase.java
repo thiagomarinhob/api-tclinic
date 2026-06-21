@@ -15,11 +15,13 @@ import com.jettech.api.solutions_clinic.exception.ForbiddenException;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultCreateExamUseCase implements CreateExamUseCase {
@@ -34,12 +36,16 @@ public class DefaultCreateExamUseCase implements CreateExamUseCase {
     @Transactional
     public ExamResponse execute(CreateExamRequest request) throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Criando exame - tenantId: {}, patientId: {}, appointmentId: {}",
+                tenantId, request.patientId(), request.appointmentId());
+
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Clínica", tenantId));
 
         Patient patient = patientRepository.findById(request.patientId())
                 .orElseThrow(() -> new EntityNotFoundException("Paciente", request.patientId()));
         if (!patient.getTenant().getId().equals(tenantId)) {
+            log.warn("Acesso negado ao criar exame - paciente {} não pertence ao tenantId: {}", request.patientId(), tenantId);
             throw new ForbiddenException();
         }
 
@@ -48,6 +54,7 @@ public class DefaultCreateExamUseCase implements CreateExamUseCase {
             appointment = appointmentRepository.findById(request.appointmentId())
                     .orElseThrow(() -> new EntityNotFoundException("Consulta", request.appointmentId()));
             if (!appointment.getTenant().getId().equals(tenantId)) {
+                log.warn("Acesso negado ao criar exame - consulta {} não pertence ao tenantId: {}", request.appointmentId(), tenantId);
                 throw new ForbiddenException();
             }
         }
@@ -62,6 +69,8 @@ public class DefaultCreateExamUseCase implements CreateExamUseCase {
 
         exam = examRepository.save(exam);
 
+        log.info("Exame criado com sucesso - examId: {}, tenantId: {}, patientId: {}, status: {}",
+                exam.getId(), tenantId, patient.getId(), exam.getStatus());
         return toResponse(exam);
     }
 

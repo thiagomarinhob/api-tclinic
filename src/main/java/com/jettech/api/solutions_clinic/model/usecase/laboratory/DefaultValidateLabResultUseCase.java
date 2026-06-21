@@ -9,12 +9,14 @@ import com.jettech.api.solutions_clinic.model.repository.LabOrderItemRepository;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultValidateLabResultUseCase implements ValidateLabResultUseCase {
@@ -26,9 +28,12 @@ public class DefaultValidateLabResultUseCase implements ValidateLabResultUseCase
     @Transactional
     public LabOrderItemResponse execute(ValidateLabResultRequest request) throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Validando resultado de exame lab - itemId: {}, validationType: {}, tenantId: {}",
+                request.itemId(), request.validationType(), tenantId);
         LabOrderItem item = labOrderItemRepository.findById(request.itemId())
                 .orElseThrow(() -> new EntityNotFoundException("Item do pedido", request.itemId()));
         if (!item.getOrder().getTenant().getId().equals(tenantId)) {
+            log.warn("Acesso negado ao validar resultado - item {} não pertence ao tenantId: {}", request.itemId(), tenantId);
             throw new ForbiddenException();
         }
         if (request.validationType() == ValidateLabResultBodyRequest.ValidationType.TECHNICAL) {
@@ -41,6 +46,7 @@ public class DefaultValidateLabResultUseCase implements ValidateLabResultUseCase
             item.setResultStatus(LabResultStatus.RELEASED);
         }
         item = labOrderItemRepository.save(item);
+        log.info("Resultado validado - itemId: {}, novoStatus: {}", item.getId(), item.getResultStatus());
         return DefaultCreateLabOrderUseCase.toItemResponse(item);
     }
 }

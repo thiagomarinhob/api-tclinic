@@ -6,6 +6,7 @@ import com.jettech.api.solutions_clinic.model.repository.ProfessionalRepository;
 import com.jettech.api.solutions_clinic.model.repository.ProfessionalScheduleRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,7 +16,9 @@ import com.jettech.api.solutions_clinic.exception.DuplicateEntityException;
 import com.jettech.api.solutions_clinic.exception.EntityNotFoundException;
 import com.jettech.api.solutions_clinic.exception.ForbiddenException;
 import com.jettech.api.solutions_clinic.security.TenantContext;
+import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultCreateProfessionalScheduleUseCase implements CreateProfessionalScheduleUseCase {
@@ -27,14 +30,19 @@ public class DefaultCreateProfessionalScheduleUseCase implements CreateProfessio
     @Override
     @Transactional
     public ProfessionalScheduleResponse execute(CreateProfessionalScheduleRequest request) throws AuthenticationFailedException {
+        UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Criando agenda do profissional - professionalId: {}, dayOfWeek: {}, tenantId: {}",
+                request.professionalId(), request.dayOfWeek(), tenantId);
         Professional professional = professionalRepository.findById(request.professionalId())
                 .orElseThrow(() -> new EntityNotFoundException("Profissional", request.professionalId()));
-        if (!professional.getTenant().getId().equals(tenantContext.getRequiredClinicId())) {
+        if (!professional.getTenant().getId().equals(tenantId)) {
+            log.warn("Acesso negado ao criar agenda - profissional {} não pertence ao tenantId: {}", request.professionalId(), tenantId);
             throw new ForbiddenException();
         }
         professionalScheduleRepository.findByProfessionalIdAndDayOfWeek(
                 request.professionalId(), request.dayOfWeek())
                 .ifPresent(schedule -> {
+                    log.warn("Agenda duplicada - professionalId: {}, dayOfWeek: {}", request.professionalId(), request.dayOfWeek());
                     throw new DuplicateEntityException(ApiError.DUPLICATE_SCHEDULE, request.dayOfWeek());
                 });
 
@@ -43,6 +51,8 @@ public class DefaultCreateProfessionalScheduleUseCase implements CreateProfessio
         schedule.setDayOfWeek(request.dayOfWeek());
 
         schedule = professionalScheduleRepository.save(schedule);
+        log.info("Agenda do profissional criada - scheduleId: {}, professionalId: {}, dayOfWeek: {}",
+                schedule.getId(), professional.getId(), schedule.getDayOfWeek());
 
         return new ProfessionalScheduleResponse(
                 schedule.getId(),

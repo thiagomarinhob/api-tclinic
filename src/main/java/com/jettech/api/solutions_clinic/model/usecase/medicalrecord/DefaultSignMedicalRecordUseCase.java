@@ -5,6 +5,7 @@ import com.jettech.api.solutions_clinic.model.repository.MedicalRecordRepository
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,7 @@ import com.jettech.api.solutions_clinic.exception.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultSignMedicalRecordUseCase implements SignMedicalRecordUseCase {
@@ -26,12 +28,14 @@ public class DefaultSignMedicalRecordUseCase implements SignMedicalRecordUseCase
     @Transactional
     public MedicalRecordResponse execute(UUID recordId) throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Assinando prontuário - recordId: {}, tenantId: {}", recordId, tenantId);
         MedicalRecord record = medicalRecordRepository.findByIdAndAppointment_TenantId(recordId, tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Prontuário", recordId));
 
         record.setSignedAt(LocalDateTime.now());
         record = medicalRecordRepository.save(record);
 
+        log.info("Prontuário assinado - recordId: {}, signedAt: {}", record.getId(), record.getSignedAt());
         return responseMapper.toResponse(record);
     }
 }

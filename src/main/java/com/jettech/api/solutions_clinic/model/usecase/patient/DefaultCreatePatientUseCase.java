@@ -9,6 +9,7 @@ import com.jettech.api.solutions_clinic.model.repository.PatientRepository;
 import com.jettech.api.solutions_clinic.model.repository.TenantRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import com.jettech.api.solutions_clinic.security.TenantContext;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultCreatePatientUseCase implements CreatePatientUseCase {
@@ -35,17 +37,21 @@ public class DefaultCreatePatientUseCase implements CreatePatientUseCase {
     @Transactional
     public PatientResponse execute(CreatePatientRequest request) throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Criando paciente - tenantId: {}", tenantId);
+
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Clínica", tenantId));
 
         var consent = request.treatmentConsent();
         if (consent == null || !Boolean.TRUE.equals(consent.granted())) {
+            log.warn("Criação de paciente rejeitada - consentimento de tratamento não concedido - tenantId: {}", tenantId);
             throw new InvalidRequestException(ApiError.CONSENT_TREATMENT_REQUIRED);
         }
 
         if (request.cpf() != null && !request.cpf().isEmpty()) {
             patientRepository.findByCpfAndTenantId(request.cpf(), tenantId)
                     .ifPresent(patient -> {
+                        log.warn("Tentativa de cadastrar paciente com CPF duplicado - tenantId: {}", tenantId);
                         throw new DuplicateEntityException(ApiError.DUPLICATE_PATIENT_CPF);
                     });
         }
@@ -76,6 +82,7 @@ public class DefaultCreatePatientUseCase implements CreatePatientUseCase {
         patient.setActive(true);
 
         patient = patientRepository.save(patient);
+        log.info("Paciente criado - patientId: {}, tenantId: {}", patient.getId(), tenantId);
 
         PatientConsent treatmentConsent = new PatientConsent();
         treatmentConsent.setPatient(patient);

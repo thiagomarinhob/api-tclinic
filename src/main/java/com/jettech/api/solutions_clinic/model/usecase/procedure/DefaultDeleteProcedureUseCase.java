@@ -5,6 +5,7 @@ import com.jettech.api.solutions_clinic.model.repository.AppointmentProcedureRep
 import com.jettech.api.solutions_clinic.model.repository.ProcedureRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +16,7 @@ import com.jettech.api.solutions_clinic.security.TenantContext;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultDeleteProcedureUseCase implements DeleteProcedureUseCase {
@@ -26,9 +28,12 @@ public class DefaultDeleteProcedureUseCase implements DeleteProcedureUseCase {
     @Override
     @Transactional
     public void execute(UUID id) throws AuthenticationFailedException {
+        log.info("Deletando procedimento - procedureId: {}", id);
         Procedure procedure = procedureRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Procedimento", id));
-        if (!procedure.getTenant().getId().equals(tenantContext.getRequiredClinicId())) {
+        UUID tenantId = tenantContext.getRequiredClinicId();
+        if (!procedure.getTenant().getId().equals(tenantId)) {
+            log.warn("Acesso negado ao deletar procedimento {} - tenantId: {}", id, tenantId);
             throw new ForbiddenException();
         }
         // Verificar se o procedimento está sendo usado em algum agendamento
@@ -41,5 +46,6 @@ public class DefaultDeleteProcedureUseCase implements DeleteProcedureUseCase {
 
         // Depois, deletar o procedimento
         procedureRepository.delete(procedure);
+        log.info("Procedimento deletado - procedureId: {}", id);
     }
 }

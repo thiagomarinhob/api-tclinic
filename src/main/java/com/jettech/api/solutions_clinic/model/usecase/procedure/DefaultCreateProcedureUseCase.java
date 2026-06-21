@@ -8,6 +8,7 @@ import com.jettech.api.solutions_clinic.model.repository.ProfessionalRepository;
 import com.jettech.api.solutions_clinic.model.repository.TenantRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +17,7 @@ import com.jettech.api.solutions_clinic.exception.EntityNotFoundException;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultCreateProcedureUseCase implements CreateProcedureUseCase {
@@ -29,6 +31,7 @@ public class DefaultCreateProcedureUseCase implements CreateProcedureUseCase {
     @Transactional
     public ProcedureResponse execute(CreateProcedureRequest request) throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Criando procedimento - tenantId: {}, name: {}", tenantId, request.name());
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Clínica", tenantId));
                 
@@ -58,10 +61,12 @@ public class DefaultCreateProcedureUseCase implements CreateProcedureUseCase {
         procedure.setActive(true);
 
         procedure = procedureRepository.save(procedure);
+        log.info("Procedimento criado - procedureId: {}, tenantId: {}, professionalId: {}",
+                procedure.getId(), tenantId, professional.getId());
 
         return ProcedureResponse.from(procedure);
     }
-    
+
     private UUID getUserIdFromContext() {
         try {
             org.springframework.security.core.Authentication authentication = 

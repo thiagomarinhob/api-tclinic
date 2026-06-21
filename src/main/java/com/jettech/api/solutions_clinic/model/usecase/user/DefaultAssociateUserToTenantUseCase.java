@@ -13,9 +13,11 @@ import com.jettech.api.solutions_clinic.exception.EntityNotFoundException;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultAssociateUserToTenantUseCase implements AssociateUserToTenantUseCase {
@@ -28,6 +30,8 @@ public class DefaultAssociateUserToTenantUseCase implements AssociateUserToTenan
     @Override
     @Transactional
     public Void execute(AssociateUserToTenantRequest request) throws AuthenticationFailedException {
+        log.info("Associando usuário ao tenant - userId: {}, tenantId: {}, role: {}",
+                request.userId(), request.tenantId(), request.role());
         tenantContext.requireSameTenant(request.tenantId());
         User user = userRepository.findById(request.userId())
                 .orElseThrow(() -> new EntityNotFoundException("Usuário", request.userId()));
@@ -38,6 +42,7 @@ public class DefaultAssociateUserToTenantUseCase implements AssociateUserToTenan
 
         // Validar se a associação já existe
         if (userTenantRoleRepository.existsByUserAndTenantAndRole(user, tenant, request.role())) {
+            log.warn("Associação duplicada userId: {}, tenantId: {}, role: {}", request.userId(), request.tenantId(), request.role());
             throw new DuplicateEntityException(ApiError.DUPLICATE_USER_TENANT_ROLE);
         }
 
@@ -48,6 +53,8 @@ public class DefaultAssociateUserToTenantUseCase implements AssociateUserToTenan
         userTenantRole.setRole(request.role());
 
         userTenantRoleRepository.save(userTenantRole);
+        log.info("Usuário associado ao tenant com sucesso - userId: {}, tenantId: {}, role: {}",
+                user.getId(), tenant.getId(), request.role());
 
         return null;
     }

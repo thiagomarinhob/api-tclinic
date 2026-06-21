@@ -9,9 +9,11 @@ import com.jettech.api.solutions_clinic.exception.ForbiddenException;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultConfirmExamResultUploadUseCase implements ConfirmExamResultUploadUseCase {
@@ -23,9 +25,13 @@ public class DefaultConfirmExamResultUploadUseCase implements ConfirmExamResultU
     @Transactional
     public ExamResponse execute(ConfirmExamResultRequest request) throws AuthenticationFailedException {
         var tenantId = tenantContext.getRequiredClinicId();
+        log.info("Confirmando upload de resultado - tenantId: {}, examId: {}, objectKey: {}",
+                tenantId, request.examId(), request.objectKey());
+
         Exam exam = examRepository.findById(request.examId())
                 .orElseThrow(() -> new EntityNotFoundException("Exame", request.examId()));
         if (!exam.getTenant().getId().equals(tenantId)) {
+            log.warn("Acesso negado ao confirmar upload de resultado - exame {} não pertence ao tenantId: {}", request.examId(), tenantId);
             throw new ForbiddenException();
         }
 
@@ -33,6 +39,8 @@ public class DefaultConfirmExamResultUploadUseCase implements ConfirmExamResultU
         exam.setStatus(ExamStatus.COMPLETED);
         exam = examRepository.save(exam);
 
+        log.info("Resultado de exame confirmado - examId: {}, status: {}, objectKey: {}",
+                exam.getId(), exam.getStatus(), exam.getResultFileKey());
         return DefaultCreateExamUseCase.toResponse(exam);
     }
 }

@@ -48,9 +48,11 @@ public class DefaultExtendTrialUseCase implements ExtendTrialUseCase {
 
     private void validateStatus(Tenant tenant) {
         if (tenant.getStatus() == TenantStatus.ACTIVE) {
+            log.warn("Tentativa de estender trial de tenant ACTIVE - tenantId: {}", tenant.getId());
             throw new InvalidStateException(ApiError.INVALID_STATE_EXTEND_TRIAL_ACTIVE);
         }
         if (tenant.getStatus() == TenantStatus.CANCELED) {
+            log.warn("Tentativa de estender trial de tenant CANCELED - tenantId: {}", tenant.getId());
             throw new InvalidStateException(ApiError.INVALID_STATE_EXTEND_TRIAL_CANCELED);
         }
     }

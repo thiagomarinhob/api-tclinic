@@ -7,6 +7,7 @@ import com.jettech.api.solutions_clinic.model.repository.ProfessionalRepository;
 import com.jettech.api.solutions_clinic.model.repository.ProfessionalScheduleRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import com.jettech.api.solutions_clinic.exception.EntityNotFoundException;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultCheckAvailabilityUseCase implements CheckAvailabilityUseCase {
@@ -26,6 +28,9 @@ public class DefaultCheckAvailabilityUseCase implements CheckAvailabilityUseCase
 
     @Override
     public Boolean execute(CheckAvailabilityRequest request) {
+        log.info("Verificando disponibilidade | professionalId={} | startTime={} | durationMinutes={}",
+                request.professionalId(), request.startTime(), request.durationMinutes());
+
         if (!professionalRepository.existsById(request.professionalId())) {
             throw new EntityNotFoundException("Profissional", request.professionalId());
         }
@@ -35,16 +40,16 @@ public class DefaultCheckAvailabilityUseCase implements CheckAvailabilityUseCase
         LocalDateTime appointmentEnd = scheduledAt.plusMinutes(durationMinutes);
         DayOfWeek dayOfWeek = scheduledAt.getDayOfWeek();
 
-        // Verificar se o profissional tem agenda para este dia da semana
         boolean hasSchedule = professionalScheduleRepository
                 .findByProfessionalIdAndDayOfWeek(request.professionalId(), dayOfWeek)
                 .isPresent();
 
         if (!hasSchedule) {
+            log.info("Profissional sem agenda para o dia | professionalId={} | diaDaSemana={} | disponivel=false",
+                    request.professionalId(), dayOfWeek);
             return false;
         }
 
-        // Verificar conflitos com agendamentos existentes
         LocalDateTime searchStart = scheduledAt.minusHours(8);
         LocalDateTime searchEnd = appointmentEnd.plusHours(1);
 
@@ -65,10 +70,13 @@ public class DefaultCheckAvailabilityUseCase implements CheckAvailabilityUseCase
             LocalDateTime existingEnd = existingStart.plusMinutes(existing.getDurationMinutes());
 
             if (scheduledAt.isBefore(existingEnd) && existingStart.isBefore(appointmentEnd)) {
+                log.info("Conflito de horário detectado | professionalId={} | horárioSolicitado={} | conflitoCom={}",
+                        request.professionalId(), scheduledAt, existing.getId());
                 return false;
             }
         }
 
+        log.info("Horário disponível | professionalId={} | startTime={}", request.professionalId(), request.startTime());
         return true;
     }
 }

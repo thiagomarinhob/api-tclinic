@@ -4,6 +4,7 @@ import com.jettech.api.solutions_clinic.model.entity.User;
 import com.jettech.api.solutions_clinic.model.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,6 +13,7 @@ import com.jettech.api.solutions_clinic.exception.AuthenticationFailedException;
 import com.jettech.api.solutions_clinic.exception.DuplicateEntityException;
 import com.jettech.api.solutions_clinic.exception.EntityNotFoundException;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultUpdateUserUseCase implements UpdateUserUseCase {
@@ -21,6 +23,7 @@ public class DefaultUpdateUserUseCase implements UpdateUserUseCase {
     @Override
     @Transactional
     public UserResponse execute(UpdateUserRequest request) throws AuthenticationFailedException {
+        log.info("Atualizando usuário - userId: {}", request.id());
         User user = userRepository.findById(request.id())
                 .orElseThrow(() -> new EntityNotFoundException("Usuário", request.id()));
 
@@ -64,6 +67,7 @@ public class DefaultUpdateUserUseCase implements UpdateUserUseCase {
         }
 
         User savedUser = userRepository.save(user);
+        log.info("Usuário atualizado - userId: {}, email: {}", savedUser.getId(), savedUser.getEmail());
 
         return new UserResponse(
                 savedUser.getId(),

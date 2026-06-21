@@ -6,10 +6,12 @@ import com.jettech.api.solutions_clinic.model.repository.ProfessionalRepository;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultGetProfessionalByUserIdUseCase implements GetProfessionalByUserIdUseCase {
@@ -20,9 +22,11 @@ public class DefaultGetProfessionalByUserIdUseCase implements GetProfessionalByU
     @Override
     public ProfessionalResponse execute(UUID userId) throws AuthenticationFailedException {
         UUID clinicId = tenantContext.getRequiredClinicId();
+        log.info("Buscando profissional por userId: {}, clinicId: {}", userId, clinicId);
 
         var professional = professionalRepository.findByUserIdAndTenantId(userId, clinicId)
                 .orElseThrow(() -> new EntityNotFoundException("Profissional", userId));
+        log.info("Profissional encontrado - professionalId: {}, userId: {}", professional.getId(), userId);
 
         return new ProfessionalResponse(
                 professional.getId(),

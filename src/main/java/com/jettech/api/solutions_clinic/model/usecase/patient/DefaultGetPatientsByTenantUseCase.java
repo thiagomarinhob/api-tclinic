@@ -5,6 +5,7 @@ import com.jettech.api.solutions_clinic.model.repository.PatientRepository;
 import com.jettech.api.solutions_clinic.model.repository.TenantRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,7 @@ import com.jettech.api.solutions_clinic.exception.AuthenticationFailedException;
 import com.jettech.api.solutions_clinic.exception.EntityNotFoundException;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultGetPatientsByTenantUseCase implements GetPatientsByTenantUseCase {
@@ -27,6 +29,9 @@ public class DefaultGetPatientsByTenantUseCase implements GetPatientsByTenantUse
     @Override
     @Transactional(readOnly = true)
     public Page<PatientResponse> execute(GetPatientsByTenantRequest request) throws AuthenticationFailedException {
+        log.info("Listando pacientes - tenantId: {}, search: {}, active: {}, page: {}, size: {}",
+                request.tenantId(), request.search() != null ? "(filtro ativo)" : null,
+                request.active(), request.page(), request.size());
         tenantContext.requireSameTenant(request.tenantId());
         tenantRepository.findById(request.tenantId())
                 .orElseThrow(() -> new EntityNotFoundException("Clínica", request.tenantId()));
@@ -46,6 +51,7 @@ public class DefaultGetPatientsByTenantUseCase implements GetPatientsByTenantUse
             : patientRepository.findByTenantId(request.tenantId(), pageable);
 
         // Converter para Page<PatientResponse>
+        log.info("Pacientes encontrados para tenantId: {} - total: {}", request.tenantId(), patientsPage.getTotalElements());
         return patientsPage.map(this::toResponse);
     }
 

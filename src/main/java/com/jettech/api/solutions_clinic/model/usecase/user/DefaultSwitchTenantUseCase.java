@@ -7,6 +7,7 @@ import com.jettech.api.solutions_clinic.model.repository.UserRepository;
 import com.jettech.api.solutions_clinic.model.repository.UserTenantRoleRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,6 +21,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultSwitchTenantUseCase implements SwitchTenantUseCase {
@@ -38,19 +40,23 @@ public class DefaultSwitchTenantUseCase implements SwitchTenantUseCase {
     public AuthUserResponse execute(SwitchTenantRequest request) throws AuthenticationFailedException {
         UUID userId = getUserIdFromContext();
         if (userId == null) {
+            log.warn("Tentativa de switch de tenant sem userId no contexto");
             throw new AuthenticationFailedException();
         }
+        log.info("Switching tenant - userId: {}, targetTenantId: {}", userId, request.tenantId());
 
         userRepository.findById(userId)
                 .orElseThrow(() -> new AuthenticationFailedException());
 
         List<UserTenantRole> userTenantRoles = userTenantRoleRepository.findByUser_IdAndTenant_Id(userId, request.tenantId());
         if (userTenantRoles.isEmpty()) {
+            log.warn("Switch de tenant negado - userId: {} não possui role no tenantId: {}", userId, request.tenantId());
             throw new AuthenticationFailedException();
         }
 
         UserTenantRole selected = userTenantRoles.get(0);
         if (!selected.getTenant().isActive()) {
+            log.warn("Switch de tenant negado - tenantId: {} está inativo", request.tenantId());
             throw new AuthenticationFailedException();
         }
 
@@ -64,6 +70,7 @@ public class DefaultSwitchTenantUseCase implements SwitchTenantUseCase {
 
         var token = tokenBuilder.sign(algorithm);
 
+        log.info("Switch de tenant realizado - userId: {}, tenantId: {}", userId, request.tenantId());
         return new AuthUserResponse(token, expiresIn.toEpochMilli());
     }
 

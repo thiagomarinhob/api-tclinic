@@ -5,6 +5,7 @@ import com.jettech.api.solutions_clinic.model.repository.ProfessionalRepository;
 import com.jettech.api.solutions_clinic.model.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultGetProfessionalTenantsUseCase implements GetProfessionalTenantsUseCase {
@@ -24,12 +26,14 @@ public class DefaultGetProfessionalTenantsUseCase implements GetProfessionalTena
     @Override
     @Transactional(readOnly = true)
     public ProfessionalTenantResponse execute(UUID userId) throws AuthenticationFailedException {
+        log.info("Buscando tenants do profissional - userId: {}", userId);
         // Validar se o usuário existe
         userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Usuário", userId));
 
         // Buscar todos os profissionais do usuário
         List<Professional> professionals = professionalRepository.findByUserId(userId);
+        log.info("Profissional pertence a {} tenant(s) - userId: {}", professionals.size(), userId);
 
         // Converter para resposta
         List<ProfessionalTenantResponse.TenantInfo> tenantInfos = professionals.stream()

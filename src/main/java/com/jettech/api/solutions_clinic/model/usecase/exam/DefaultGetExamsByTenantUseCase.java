@@ -6,6 +6,7 @@ import com.jettech.api.solutions_clinic.exception.AuthenticationFailedException;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -13,6 +14,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultGetExamsByTenantUseCase implements GetExamsByTenantUseCase {
@@ -24,6 +26,8 @@ public class DefaultGetExamsByTenantUseCase implements GetExamsByTenantUseCase {
     @Transactional(readOnly = true)
     public Page<ExamListResponse> execute(GetExamsByTenantRequest request) throws AuthenticationFailedException {
         var tenantId = tenantContext.getRequiredClinicId();
+        log.info("Listando exames do tenant - tenantId: {}, patientId: {}, status: {}, page: {}, size: {}",
+                tenantId, request.patientId(), request.status(), request.page(), request.size());
         Pageable pageable = PageRequest.of(request.page(), request.size(), Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Exam> page = examRepository.findByTenantIdWithFilters(
                 tenantId,
@@ -31,6 +35,7 @@ public class DefaultGetExamsByTenantUseCase implements GetExamsByTenantUseCase {
                 request.status(),
                 pageable
         );
+        log.info("Exames encontrados para tenantId: {} - total: {}", tenantId, page.getTotalElements());
         return page.map(this::toListResponse);
     }
 

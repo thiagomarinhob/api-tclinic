@@ -11,6 +11,7 @@ import com.jettech.api.solutions_clinic.model.repository.UserRepository;
 import com.jettech.api.solutions_clinic.model.repository.UserTenantRoleRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,7 @@ import com.jettech.api.solutions_clinic.exception.DuplicateEntityException;
 import com.jettech.api.solutions_clinic.exception.EntityNotFoundException;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultAddProfessionalToClinicUseCase implements AddProfessionalToClinicUseCase {
@@ -33,6 +35,7 @@ public class DefaultAddProfessionalToClinicUseCase implements AddProfessionalToC
     @Override
     @Transactional
     public ProfessionalResponse execute(AddProfessionalToClinicRequest request) throws AuthenticationFailedException {
+        log.info("Adicionando profissional à clínica - tenantId: {}, userId: {}", request.tenantId(), request.userId());
         // Validar se o usuário existe
         User user = userRepository.findById(request.userId())
                 .orElseThrow(() -> new EntityNotFoundException("Usuário", request.userId()));
@@ -45,6 +48,7 @@ public class DefaultAddProfessionalToClinicUseCase implements AddProfessionalToC
         // Validar se já existe profissional com mesmo user e tenant
         professionalRepository.findByUserIdAndTenantId(request.userId(), request.tenantId())
                 .ifPresent(professional -> {
+                    log.warn("Profissional duplicado ao adicionar à clínica - userId: {}, tenantId: {}", request.userId(), request.tenantId());
                     throw new DuplicateEntityException(ApiError.DUPLICATE_PROFESSIONAL);
                 });
 
@@ -60,6 +64,8 @@ public class DefaultAddProfessionalToClinicUseCase implements AddProfessionalToC
         professional.setActive(true);
 
         professional = professionalRepository.save(professional);
+        log.info("Profissional adicionado à clínica - professionalId: {}, userId: {}, tenantId: {}",
+                professional.getId(), user.getId(), tenant.getId());
 
         // Criar role SPECIALIST automaticamente para o usuário no tenant
         if (!userTenantRoleRepository.existsByUserAndTenantAndRole(user, tenant, Role.SPECIALIST)) {

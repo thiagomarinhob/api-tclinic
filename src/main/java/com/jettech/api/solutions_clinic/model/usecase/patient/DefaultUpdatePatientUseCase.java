@@ -10,11 +10,13 @@ import com.jettech.api.solutions_clinic.model.repository.PatientRepository;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultUpdatePatientUseCase implements UpdatePatientUseCase {
@@ -26,11 +28,13 @@ public class DefaultUpdatePatientUseCase implements UpdatePatientUseCase {
     @Transactional
     public PatientResponse execute(UpdatePatientRequest request) throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Atualizando paciente - patientId: {}, tenantId: {}", request.id(), tenantId);
 
         Patient patient = patientRepository.findById(request.id())
                 .orElseThrow(() -> new EntityNotFoundException("Paciente", request.id()));
 
         if (!patient.getTenant().getId().equals(tenantId)) {
+            log.warn("Acesso negado ao atualizar paciente {} - tenantId: {}", request.id(), tenantId);
             throw new ForbiddenException();
         }
 
@@ -38,6 +42,7 @@ public class DefaultUpdatePatientUseCase implements UpdatePatientUseCase {
             patientRepository.findByCpfAndTenantId(request.cpf(), tenantId)
                     .ifPresent(existing -> {
                         if (!existing.getId().equals(request.id())) {
+                            log.warn("CPF duplicado ao atualizar paciente {} - tenantId: {}", request.id(), tenantId);
                             throw new DuplicateEntityException(ApiError.DUPLICATE_PATIENT_CPF);
                         }
                     });
@@ -66,6 +71,7 @@ public class DefaultUpdatePatientUseCase implements UpdatePatientUseCase {
         patient.setGuardianRelationship(request.guardianRelationship());
 
         patient = patientRepository.save(patient);
+        log.info("Paciente atualizado com sucesso - patientId: {}", patient.getId());
 
         return new PatientResponse(
                 patient.getId(),

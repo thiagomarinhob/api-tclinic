@@ -12,10 +12,12 @@ import com.jettech.api.solutions_clinic.exception.DuplicateEntityException;
 import com.jettech.api.solutions_clinic.exception.EntityNotFoundException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultCreateUserUseCase implements CreateUserUseCase {
@@ -28,10 +30,13 @@ public class DefaultCreateUserUseCase implements CreateUserUseCase {
     @Override
     @Transactional
     public User execute(CreateUserRequest in) {
+        log.info("Criando usuário - email: {}, tenantId: {}", in.email(), in.tenantId());
+
         // Validar email duplicado
         userRepository
                 .findByEmail(in.email())
                 .ifPresent((user) -> {
+                    log.warn("Email duplicado ao criar usuário - email: {}", in.email());
                     throw new DuplicateEntityException(ApiError.DUPLICATE_EMAIL);
                 });
 
@@ -40,6 +45,7 @@ public class DefaultCreateUserUseCase implements CreateUserUseCase {
             userRepository
                     .findByCpf(in.cpf())
                     .ifPresent((user) -> {
+                        log.warn("CPF duplicado ao criar usuário");
                         throw new DuplicateEntityException(ApiError.DUPLICATE_CPF);
                     });
         }
@@ -64,6 +70,7 @@ public class DefaultCreateUserUseCase implements CreateUserUseCase {
         }
 
         userRepository.save(user);
+        log.info("Usuário criado - userId: {}, email: {}", user.getId(), user.getEmail());
 
         // Se tenantId foi fornecido, criar role RECEPTION automaticamente
         if (in.tenantId() != null) {

@@ -12,6 +12,7 @@ import com.jettech.api.solutions_clinic.model.usecase.user.CreateUserRequest;
 import com.jettech.api.solutions_clinic.model.usecase.user.CreateUserUseCase;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import com.jettech.api.solutions_clinic.exception.DuplicateEntityException;
 import com.jettech.api.solutions_clinic.exception.EntityNotFoundException;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultCreateProfessionalWithUserUseCase implements CreateProfessionalWithUserUseCase {
@@ -35,6 +37,7 @@ public class DefaultCreateProfessionalWithUserUseCase implements CreateProfessio
     @Transactional
     public ProfessionalResponse execute(CreateProfessionalWithUserRequest request) throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Criando profissional com novo usuário - tenantId: {}, email: {}", tenantId, request.email());
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Clínica", tenantId));
 
@@ -70,6 +73,8 @@ public class DefaultCreateProfessionalWithUserUseCase implements CreateProfessio
         professional.setActive(true);
 
         professional = professionalRepository.save(professional);
+        log.info("Profissional criado com novo usuário - professionalId: {}, userId: {}, tenantId: {}",
+                professional.getId(), user.getId(), tenantId);
 
         // Remover role RECEPTION e criar role SPECIALIST para o usuário no tenant
         userTenantRoleRepository.findByUserAndTenant(user, tenant)

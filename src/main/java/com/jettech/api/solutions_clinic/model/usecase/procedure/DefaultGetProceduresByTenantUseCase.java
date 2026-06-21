@@ -5,6 +5,7 @@ import com.jettech.api.solutions_clinic.model.repository.ProcedureRepository;
 import com.jettech.api.solutions_clinic.model.repository.TenantRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,7 @@ import com.jettech.api.solutions_clinic.exception.AuthenticationFailedException;
 import com.jettech.api.solutions_clinic.exception.EntityNotFoundException;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultGetProceduresByTenantUseCase implements GetProceduresByTenantUseCase {
@@ -27,6 +29,8 @@ public class DefaultGetProceduresByTenantUseCase implements GetProceduresByTenan
     @Override
     @Transactional(readOnly = true)
     public Page<ProcedureResponse> execute(GetProceduresByTenantRequest request) throws AuthenticationFailedException {
+        log.info("Listando procedimentos - tenantId: {}, active: {}, page: {}, size: {}",
+                request.tenantId(), request.active(), request.page(), request.size());
         tenantContext.requireSameTenant(request.tenantId());
         tenantRepository.findById(request.tenantId())
                 .orElseThrow(() -> new EntityNotFoundException("Clínica", request.tenantId()));
@@ -49,6 +53,7 @@ public class DefaultGetProceduresByTenantUseCase implements GetProceduresByTenan
             : procedureRepository.findByTenantId(request.tenantId(), pageable);
 
         // Converter para Page<ProcedureResponse>
+        log.info("Procedimentos encontrados para tenantId: {} - total: {}", request.tenantId(), proceduresPage.getTotalElements());
         return proceduresPage.map(this::toResponse);
     }
 

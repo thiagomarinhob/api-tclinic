@@ -9,12 +9,14 @@ import com.jettech.api.solutions_clinic.model.repository.LabOrderRepository;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultUpdateLabOrderStatusUseCase implements UpdateLabOrderStatusUseCase {
@@ -26,11 +28,15 @@ public class DefaultUpdateLabOrderStatusUseCase implements UpdateLabOrderStatusU
     @Transactional
     public LabOrderResponse execute(UpdateLabOrderStatusRequest request) throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Atualizando status do pedido lab - orderId: {}, novoStatus: {}, tenantId: {}",
+                request.id(), request.status(), tenantId);
         LabOrder order = labOrderRepository.findById(request.id())
                 .orElseThrow(() -> new EntityNotFoundException("Pedido laboratorial", request.id()));
         if (!order.getTenant().getId().equals(tenantId)) {
+            log.warn("Acesso negado ao atualizar status do pedido lab {} - tenantId: {}", request.id(), tenantId);
             throw new ForbiddenException();
         }
+        LabOrderStatus statusAnterior = order.getStatus();
         order.setStatus(request.status());
         if (request.sampleCode() != null) order.setSampleCode(request.sampleCode());
         if (request.collectedBy() != null) order.setCollectedBy(request.collectedBy());
@@ -45,6 +51,8 @@ public class DefaultUpdateLabOrderStatusUseCase implements UpdateLabOrderStatusU
             order.setReceivedAt(LocalDateTime.now());
         }
         order = labOrderRepository.save(order);
+        log.info("Status do pedido lab atualizado - orderId: {}, statusAnterior: {}, novoStatus: {}",
+                order.getId(), statusAnterior, order.getStatus());
         return DefaultCreateLabOrderUseCase.toResponse(order);
     }
 }

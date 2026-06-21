@@ -12,6 +12,7 @@ import com.jettech.api.solutions_clinic.model.repository.TenantRepository;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultCreateComboProcedureUseCase implements CreateComboProcedureUseCase {
@@ -33,6 +35,8 @@ public class DefaultCreateComboProcedureUseCase implements CreateComboProcedureU
     @Transactional
     public ProcedureResponse execute(CreateComboProcedureRequest request) throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Criando procedimento combo - tenantId: {}, name: {}, itens: {}",
+                tenantId, request.name(), request.itemProcedureIds() != null ? request.itemProcedureIds().size() : 0);
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Clínica", tenantId));
 
@@ -71,6 +75,8 @@ public class DefaultCreateComboProcedureUseCase implements CreateComboProcedureU
         }
 
         combo = procedureRepository.save(combo);
+        log.info("Procedimento combo criado - procedureId: {}, tenantId: {}, durationMinutes: {}",
+                combo.getId(), tenantId, combo.getEstimatedDurationMinutes());
 
         return ProcedureResponse.from(combo);
     }

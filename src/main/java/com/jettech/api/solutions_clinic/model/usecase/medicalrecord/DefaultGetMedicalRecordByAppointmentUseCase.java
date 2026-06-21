@@ -5,6 +5,7 @@ import com.jettech.api.solutions_clinic.model.repository.MedicalRecordRepository
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import com.jettech.api.solutions_clinic.exception.AuthenticationFailedException;
@@ -14,6 +15,7 @@ import com.jettech.api.solutions_clinic.exception.ForbiddenException;
 import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultGetMedicalRecordByAppointmentUseCase implements GetMedicalRecordByAppointmentUseCase {
@@ -26,14 +28,18 @@ public class DefaultGetMedicalRecordByAppointmentUseCase implements GetMedicalRe
     @Override
     public Optional<MedicalRecordResponse> execute(UUID appointmentId) throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Buscando prontuário por appointmentId: {}, tenantId: {}", appointmentId, tenantId);
 
         var appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new EntityNotFoundException("Agendamento", appointmentId));
         if (!appointment.getTenant().getId().equals(tenantId)) {
+            log.warn("Acesso negado ao prontuário - agendamento {} não pertence ao tenantId: {}", appointmentId, tenantId);
             throw new ForbiddenException(com.jettech.api.solutions_clinic.exception.ApiError.ACCESS_DENIED);
         }
 
-        return medicalRecordRepository.findByAppointmentId(appointmentId)
+        var result = medicalRecordRepository.findByAppointmentId(appointmentId)
                 .map(responseMapper::toResponse);
+        log.info("Prontuário para appointmentId: {} - encontrado: {}", appointmentId, result.isPresent());
+        return result;
     }
 }

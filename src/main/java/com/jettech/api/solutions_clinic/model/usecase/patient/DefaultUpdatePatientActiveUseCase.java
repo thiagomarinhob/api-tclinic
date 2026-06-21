@@ -4,6 +4,7 @@ import com.jettech.api.solutions_clinic.model.entity.Patient;
 import com.jettech.api.solutions_clinic.model.repository.PatientRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,7 +12,9 @@ import com.jettech.api.solutions_clinic.exception.AuthenticationFailedException;
 import com.jettech.api.solutions_clinic.exception.EntityNotFoundException;
 import com.jettech.api.solutions_clinic.exception.ForbiddenException;
 import com.jettech.api.solutions_clinic.security.TenantContext;
+import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultUpdatePatientActiveUseCase implements UpdatePatientActiveUseCase {
@@ -22,13 +25,17 @@ public class DefaultUpdatePatientActiveUseCase implements UpdatePatientActiveUse
     @Override
     @Transactional
     public PatientResponse execute(UpdatePatientActiveRequest request) throws AuthenticationFailedException {
+        log.info("Atualizando status ativo do paciente - patientId: {}, active: {}", request.id(), request.active());
         Patient patient = patientRepository.findById(request.id())
                 .orElseThrow(() -> new EntityNotFoundException("Paciente", request.id()));
-        if (!patient.getTenant().getId().equals(tenantContext.getRequiredClinicId())) {
+        UUID tenantId = tenantContext.getRequiredClinicId();
+        if (!patient.getTenant().getId().equals(tenantId)) {
+            log.warn("Acesso negado ao atualizar status do paciente {} - tenantId: {}", request.id(), tenantId);
             throw new ForbiddenException();
         }
         patient.setActive(request.active());
         patient = patientRepository.save(patient);
+        log.info("Status do paciente atualizado - patientId: {}, active: {}", patient.getId(), patient.isActive());
 
         return new PatientResponse(
                 patient.getId(),

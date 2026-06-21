@@ -17,6 +17,7 @@ import com.jettech.api.solutions_clinic.model.service.AppointmentEmailService;
 import com.jettech.api.solutions_clinic.model.service.FinancialSyncService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +34,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultUpdateAppointmentUseCase implements UpdateAppointmentUseCase {
@@ -55,49 +57,55 @@ public class DefaultUpdateAppointmentUseCase implements UpdateAppointmentUseCase
     @Override
     @Transactional
     public AppointmentResponse execute(UpdateAppointmentRequest request) throws AuthenticationFailedException {
+        log.info("Atualizando agendamento | appointmentId={}", request.id());
+
         Appointment appointment = appointmentRepository.findById(request.id())
                 .orElseThrow(() -> new EntityNotFoundException("Agendamento", request.id()));
         if (!appointment.getTenant().getId().equals(tenantContext.getRequiredClinicId())) {
             throw new ForbiddenException();
         }
-        // Não permitir atualização de agendamentos cancelados ou finalizados
-        if (appointment.getStatus() == AppointmentStatus.CANCELADO || 
+
+        log.info("Agendamento encontrado | appointmentId={} | statusAtual={} | paymentStatusAtual={}",
+                appointment.getId(), appointment.getStatus(), appointment.getPaymentStatus());
+
+        if (appointment.getStatus() == AppointmentStatus.CANCELADO ||
             appointment.getStatus() == AppointmentStatus.FINALIZADO) {
+            log.warn("Tentativa de atualização em agendamento com status inválido | appointmentId={} | status={}",
+                    appointment.getId(), appointment.getStatus());
             throw new InvalidStateException(ApiError.INVALID_STATE_APPOINTMENT_STATUS);
         }
 
-        // Atualizar paciente se fornecido
         if (request.patientId() != null) {
             Patient patient = patientRepository.findById(request.patientId())
                     .orElseThrow(() -> new EntityNotFoundException("Paciente", request.patientId()));
             appointment.setPatient(patient);
+            log.debug("Paciente atualizado | appointmentId={} | novoPatientId={}", appointment.getId(), request.patientId());
         }
 
-        // Atualizar profissional se fornecido
         if (request.professionalId() != null) {
             Professional professional = professionalRepository.findById(request.professionalId())
                     .orElseThrow(() -> new EntityNotFoundException("Profissional", request.professionalId()));
             appointment.setProfessional(professional);
+            log.debug("Profissional atualizado | appointmentId={} | novoProfessionalId={}", appointment.getId(), request.professionalId());
         }
 
-        // Atualizar sala se fornecido
         if (request.roomId() != null) {
             Room room = roomRepository.findById(request.roomId())
                     .orElseThrow(() -> new EntityNotFoundException("Sala", request.roomId()));
             appointment.setRoom(room);
+            log.debug("Sala atualizada | appointmentId={} | novaRoomId={}", appointment.getId(), request.roomId());
         }
 
-        // Atualizar horário se fornecido
         LocalDateTime scheduledAt = request.scheduledAt() != null ? request.scheduledAt() : appointment.getScheduledAt();
         int durationMinutes = request.durationMinutes() != null ? request.durationMinutes() : appointment.getDurationMinutes();
         UUID professionalId = request.professionalId() != null ? request.professionalId() : appointment.getProfessional().getId();
         UUID roomId = request.roomId() != null ? request.roomId() : (appointment.getRoom() != null ? appointment.getRoom().getId() : null);
 
-        // Validar horário disponível se horário ou profissional mudou
         if (request.scheduledAt() != null || request.professionalId() != null || request.durationMinutes() != null) {
+            log.info("Validando novo horário | appointmentId={} | novoScheduledAt={} | duracao={}min",
+                    appointment.getId(), scheduledAt, durationMinutes);
             validateProfessionalSchedule(professionalId, scheduledAt, durationMinutes);
-            
-            // Verificar conflito de horário com outros agendamentos do profissional
+
             String professionalConflict = availabilityConflictChecker.findConflict(
                     scheduledAt,
                     durationMinutes,
@@ -107,19 +115,23 @@ public class DefaultUpdateAppointmentUseCase implements UpdateAppointmentUseCase
                     PROFESSIONAL_CONFLICT_MESSAGE
             );
             if (professionalConflict != null && !request.forceSchedule()) {
+                log.warn("Conflito de horário bloqueou atualização | appointmentId={} | professionalId={} | scheduledAt={}",
+                        appointment.getId(), professionalId, scheduledAt);
                 throw new AppointmentConflictException(professionalConflict);
+            }
+            if (professionalConflict != null) {
+                log.warn("Conflito de horário ignorado via forceSchedule | appointmentId={} | professionalId={}",
+                        appointment.getId(), professionalId);
             }
         }
 
         appointment.setScheduledAt(scheduledAt);
         appointment.setDurationMinutes(durationMinutes);
 
-        // Atualizar observações se fornecido
         if (request.observations() != null) {
             appointment.setObservations(request.observations());
         }
 
-        // Atualizar procedimentos se fornecido e recalcular totalValue
         if (request.procedureIds() != null) {
             UUID tenantId = tenantContext.getRequiredClinicId();
             appointment.getProcedures().clear();
@@ -133,52 +145,61 @@ public class DefaultUpdateAppointmentUseCase implements UpdateAppointmentUseCase
                     ap.setFinalPrice(procedure.getBasePrice());
                     appointment.getProcedures().add(ap);
                 }
-                // Recalcular totalValue a partir dos procedimentos (salvo override explícito)
                 if (request.totalValue() == null) {
                     appointment.setTotalValue(loadResult.totalValueFromProcedures());
                 }
+                log.info("Procedimentos atualizados | appointmentId={} | quantidade={} | valorTotal={}",
+                        appointment.getId(), loadResult.procedures().size(), appointment.getTotalValue());
             } else {
-                // Lista vazia: zera os procedimentos mas mantém totalValue se explicitamente fornecido
                 if (request.totalValue() == null) {
                     appointment.setTotalValue(BigDecimal.ZERO);
                 }
+                log.info("Procedimentos removidos do agendamento | appointmentId={}", appointment.getId());
             }
         }
 
-        // Atualizar valor total se fornecido explicitamente (override dos procedimentos)
         if (request.totalValue() != null) {
+            log.info("Valor total sobrescrito manualmente | appointmentId={} | novoValor={}", appointment.getId(), request.totalValue());
             appointment.setTotalValue(request.totalValue());
         }
 
-        // Atualizar status de pagamento se fornecido
         PaymentStatus oldPaymentStatus = appointment.getPaymentStatus();
         if (request.paymentStatus() != null) {
             appointment.setPaymentStatus(request.paymentStatus());
-            
-            // Se foi marcado como PAGO, definir paidAt
+            log.info("Status de pagamento alterado | appointmentId={} | de={} | para={}",
+                    appointment.getId(), oldPaymentStatus, request.paymentStatus());
+
             if (request.paymentStatus() == PaymentStatus.PAGO && appointment.getPaidAt() == null) {
                 appointment.setPaidAt(LocalDateTime.now());
+                log.info("Pagamento registrado | appointmentId={} | paidAt={}", appointment.getId(), appointment.getPaidAt());
             }
-            
-            // Se foi cancelado, limpar paidAt
+
             if (request.paymentStatus() == PaymentStatus.CANCELADO) {
                 appointment.setPaidAt(null);
             }
         }
 
-        // Atualizar método de pagamento se fornecido
         if (request.paymentMethod() != null) {
             appointment.setPaymentMethod(request.paymentMethod());
+            log.debug("Método de pagamento atualizado | appointmentId={} | metodo={}", appointment.getId(), request.paymentMethod());
         }
 
         appointment = appointmentRepository.save(appointment);
+        log.info("Agendamento atualizado | appointmentId={} | scheduledAt={} | status={}",
+                appointment.getId(), appointment.getScheduledAt(), appointment.getStatus());
 
-        appointmentEmailService.sendUpdate(appointment);
+        try {
+            appointmentEmailService.sendUpdate(appointment);
+            log.info("E-mail de atualização enviado | appointmentId={}", appointment.getId());
+        } catch (Exception e) {
+            log.error("Falha ao enviar e-mail de atualização | appointmentId={} | erro={}",
+                    appointment.getId(), e.getMessage(), e);
+        }
 
-        // Sincronizar transação financeira se o status de pagamento mudou para PAGO
-        if (request.paymentStatus() != null && 
-            request.paymentStatus() == PaymentStatus.PAGO && 
+        if (request.paymentStatus() != null &&
+            request.paymentStatus() == PaymentStatus.PAGO &&
             oldPaymentStatus != PaymentStatus.PAGO) {
+            log.info("Sincronizando transação financeira | appointmentId={}", appointment.getId());
             financialSyncService.syncAppointmentPayment(appointment);
         }
 

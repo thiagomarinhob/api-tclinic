@@ -4,6 +4,7 @@ import com.jettech.api.solutions_clinic.model.entity.Patient;
 import com.jettech.api.solutions_clinic.model.repository.PatientRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +14,7 @@ import com.jettech.api.solutions_clinic.exception.ForbiddenException;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultGetPatientByIdUseCase implements GetPatientByIdUseCase {
@@ -23,11 +25,15 @@ public class DefaultGetPatientByIdUseCase implements GetPatientByIdUseCase {
     @Override
     @Transactional(readOnly = true)
     public PatientResponse execute(UUID id) throws AuthenticationFailedException {
+        log.info("Buscando paciente por id: {}", id);
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Paciente", id));
-        if (!patient.getTenant().getId().equals(tenantContext.getRequiredClinicId())) {
+        UUID tenantId = tenantContext.getRequiredClinicId();
+        if (!patient.getTenant().getId().equals(tenantId)) {
+            log.warn("Acesso negado ao paciente {} - tenantId: {}", id, tenantId);
             throw new ForbiddenException();
         }
+        log.info("Paciente {} encontrado - active: {}", id, patient.isActive());
 
         return new PatientResponse(
                 patient.getId(),

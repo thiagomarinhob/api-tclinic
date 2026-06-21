@@ -5,12 +5,14 @@ import com.jettech.api.solutions_clinic.model.repository.LabOrderRepository;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultGetLabOrdersByTenantUseCase implements GetLabOrdersByTenantUseCase {
@@ -21,9 +23,13 @@ public class DefaultGetLabOrdersByTenantUseCase implements GetLabOrdersByTenantU
     @Override
     public Page<LabOrderResponse> execute(GetLabOrdersByTenantRequest request) throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Listando pedidos lab do tenant - tenantId: {}, status: {}, page: {}, size: {}",
+                tenantId, request.status(), request.page(), request.size());
         PageRequest pageable = PageRequest.of(request.page(), request.size());
-        return labOrderRepository.findByTenantWithFilters(
+        var result = labOrderRepository.findByTenantWithFilters(
             tenantId, request.patientId(), request.status(), request.search(), pageable
         ).map(DefaultCreateLabOrderUseCase::toResponse);
+        log.info("Pedidos lab encontrados para tenantId: {} - total: {}", tenantId, result.getTotalElements());
+        return result;
     }
 }

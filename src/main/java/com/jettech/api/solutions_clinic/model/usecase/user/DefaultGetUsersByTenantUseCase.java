@@ -5,6 +5,7 @@ import com.jettech.api.solutions_clinic.model.repository.TenantRepository;
 import com.jettech.api.solutions_clinic.model.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,7 @@ import com.jettech.api.solutions_clinic.exception.AuthenticationFailedException;
 import com.jettech.api.solutions_clinic.exception.EntityNotFoundException;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultGetUsersByTenantUseCase implements GetUsersByTenantUseCase {
@@ -27,6 +29,8 @@ public class DefaultGetUsersByTenantUseCase implements GetUsersByTenantUseCase {
     @Override
     @Transactional(readOnly = true)
     public Page<UserResponse> execute(GetUsersByTenantRequest request) throws AuthenticationFailedException {
+        log.info("Listando usuários do tenant - tenantId: {}, blocked: {}, page: {}, size: {}",
+                request.tenantId(), request.blocked(), request.page(), request.size());
         tenantContext.requireSameTenant(request.tenantId());
         tenantRepository.findById(request.tenantId())
                 .orElseThrow(() -> new EntityNotFoundException("Clínica", request.tenantId()));
@@ -44,6 +48,7 @@ public class DefaultGetUsersByTenantUseCase implements GetUsersByTenantUseCase {
         );
 
         // Converter para Page<UserResponse>
+        log.info("Usuários encontrados para tenantId: {} - total: {}", request.tenantId(), usersPage.getTotalElements());
         return usersPage.map(this::toResponse);
     }
 

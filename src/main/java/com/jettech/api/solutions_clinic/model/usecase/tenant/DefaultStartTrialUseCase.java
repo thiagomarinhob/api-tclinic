@@ -43,11 +43,15 @@ public class DefaultStartTrialUseCase implements StartTrialUseCase {
 
         // Verificar se já tem um plano ativo ou está em trial
         if (tenant.getStatus() == TenantStatus.ACTIVE || tenant.getStatus() == TenantStatus.TRIAL) {
+            log.warn("Tentativa de iniciar trial para tenant já ativo/em trial - tenantId: {}, status: {}",
+                    request.tenantId(), tenant.getStatus());
             throw new InvalidStateException(ApiError.INVALID_STATE_ALREADY_ACTIVE);
         }
 
         // Verificar se já teve trial anteriormente (opcional - pode remover se permitir múltiplos trials)
         if (tenant.getTrialEndsAt() != null && tenant.getTrialEndsAt().isAfter(LocalDate.now())) {
+            log.warn("Tentativa de iniciar trial para tenant que já possui trial ativo - tenantId: {}, trialEndsAt: {}",
+                    request.tenantId(), tenant.getTrialEndsAt());
             throw new InvalidStateException(ApiError.INVALID_STATE_ALREADY_TRIAL);
         }
 

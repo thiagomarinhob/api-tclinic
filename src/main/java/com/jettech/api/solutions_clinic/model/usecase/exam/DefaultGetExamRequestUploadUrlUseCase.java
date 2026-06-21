@@ -11,6 +11,7 @@ import com.jettech.api.solutions_clinic.model.service.R2StorageService;
 import com.jettech.api.solutions_clinic.security.TenantContext;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,7 @@ import java.util.UUID;
  * Gera URL pré-assinada para upload da solicitação/prescrição médica diretamente ao R2.
  * Não exige status específico do exame — a solicitação pode ser anexada a qualquer momento.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultGetExamRequestUploadUrlUseCase implements GetExamRequestUploadUrlUseCase {
@@ -34,13 +36,17 @@ public class DefaultGetExamRequestUploadUrlUseCase implements GetExamRequestUplo
     @Transactional(readOnly = true)
     public PresignedUploadUrlResponse execute(GetPresignedUploadUrlRequest request) throws AuthenticationFailedException {
         if (!r2StorageService.isConfigured()) {
+            log.error("R2 storage não configurado - não é possível gerar URL de upload de solicitação");
             throw new ServiceUnavailableException(ApiError.R2_NOT_CONFIGURED);
         }
 
         UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Gerando URL de upload de solicitação - tenantId: {}, examId: {}", tenantId, request.examId());
+
         Exam exam = examRepository.findById(request.examId())
                 .orElseThrow(() -> new EntityNotFoundException("Exame", request.examId()));
         if (!exam.getTenant().getId().equals(tenantId)) {
+            log.warn("Acesso negado - exame {} não pertence ao tenantId: {}", request.examId(), tenantId);
             throw new ForbiddenException();
         }
 
@@ -49,9 +55,11 @@ public class DefaultGetExamRequestUploadUrlUseCase implements GetExamRequestUplo
 
         String uploadUrl = r2StorageService.createPresignedPutUrl(objectKey, PRESIGNED_EXPIRY_MINUTES);
         if (uploadUrl == null) {
+            log.error("Falha ao gerar URL de upload de solicitação R2 para examId: {}", exam.getId());
             throw new ServiceUnavailableException(ApiError.R2_NOT_CONFIGURED);
         }
 
+        log.info("URL de upload de solicitação gerada - examId: {}, objectKey: {}", exam.getId(), objectKey);
         return new PresignedUploadUrlResponse(uploadUrl, objectKey, PRESIGNED_EXPIRY_MINUTES);
     }
 

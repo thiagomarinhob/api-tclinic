@@ -6,6 +6,7 @@ import com.jettech.api.solutions_clinic.model.repository.UserRepository;
 import com.jettech.api.solutions_clinic.model.repository.UserTenantRoleRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultGetUserByIdUseCase implements GetUserByIdUseCase {
@@ -28,6 +30,7 @@ public class DefaultGetUserByIdUseCase implements GetUserByIdUseCase {
     @Override
     @Transactional(readOnly = true)
     public UserDetailResponse execute(UUID userId) throws AuthenticationFailedException {
+        log.info("Buscando usuário por id: {}", userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Usuário", userId));
 
@@ -36,8 +39,10 @@ public class DefaultGetUserByIdUseCase implements GetUserByIdUseCase {
         boolean hasAccessToClinic = userTenantRoles.stream()
                 .anyMatch(utr -> utr.getTenant().getId().equals(contextClinicId));
         if (!hasAccessToClinic) {
+            log.warn("Acesso negado ao usuário {} - sem role no clinicId: {}", userId, contextClinicId);
             throw new ForbiddenException();
         }
+        log.info("Usuário {} encontrado - email: {}, roles: {}", userId, user.getEmail(), userTenantRoles.size());
 
         List<UserDetailResponse.TenantRoleInfo> tenantRoles = userTenantRoles.stream()
                 .map(utr -> new UserDetailResponse.TenantRoleInfo(

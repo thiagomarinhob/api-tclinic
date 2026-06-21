@@ -3,10 +3,12 @@ package com.jettech.api.solutions_clinic.model.usecase.exam;
 import com.jettech.api.solutions_clinic.model.repository.ExamTypeRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultGetExamTypesUseCase implements GetExamTypesUseCase {
@@ -15,9 +17,12 @@ public class DefaultGetExamTypesUseCase implements GetExamTypesUseCase {
 
     @Override
     public List<ExamTypeResponse> execute() {
-        return examTypeRepository.findByActiveTrueOrderByCategoryAscDisplayOrderAsc()
+        log.info("Buscando tipos de exame ativos");
+        var result = examTypeRepository.findByActiveTrueOrderByCategoryAscDisplayOrderAsc()
                 .stream()
                 .map(t -> new ExamTypeResponse(t.getId(), t.getCategory(), t.getName()))
                 .toList();
+        log.info("Tipos de exame encontrados: {}", result.size());
+        return result;
     }
 }

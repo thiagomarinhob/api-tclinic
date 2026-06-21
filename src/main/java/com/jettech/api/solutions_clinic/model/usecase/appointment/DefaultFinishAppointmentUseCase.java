@@ -7,6 +7,7 @@ import com.jettech.api.solutions_clinic.model.repository.AppointmentRepository;
 import com.jettech.api.solutions_clinic.model.service.FinancialSyncService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultFinishAppointmentUseCase implements FinishAppointmentUseCase {
@@ -33,12 +35,16 @@ public class DefaultFinishAppointmentUseCase implements FinishAppointmentUseCase
     @Override
     @Transactional
     public AppointmentResponse execute(UUID appointmentId, FinishAppointmentRequest request) throws AuthenticationFailedException {
+        log.info("Finalizando atendimento | appointmentId={}", appointmentId);
+
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new EntityNotFoundException("Agendamento", appointmentId));
         if (!appointment.getTenant().getId().equals(tenantContext.getRequiredClinicId())) {
             throw new ForbiddenException();
         }
         if (appointment.getStatus() != AppointmentStatus.EM_ATENDIMENTO) {
+            log.warn("Tentativa de finalizar agendamento com status inválido | appointmentId={} | statusAtual={}",
+                    appointmentId, appointment.getStatus());
             throw new InvalidStateException(ApiError.INVALID_STATE_APPOINTMENT_STATUS);
         }
 
@@ -49,6 +55,7 @@ public class DefaultFinishAppointmentUseCase implements FinishAppointmentUseCase
         if (appointment.getStartedAt() != null) {
             long minutes = Duration.between(appointment.getStartedAt(), finishedAt).toMinutes();
             appointment.setDurationActualMinutes((int) minutes);
+            log.info("Duração real do atendimento | appointmentId={} | duracaoRealMinutos={}", appointmentId, minutes);
         }
 
         if (request != null) {
@@ -58,22 +65,31 @@ public class DefaultFinishAppointmentUseCase implements FinishAppointmentUseCase
             if (request.paymentStatus() != null) {
                 PaymentStatus oldPaymentStatus = appointment.getPaymentStatus();
                 appointment.setPaymentStatus(request.paymentStatus());
+                log.info("Status de pagamento na finalização | appointmentId={} | de={} | para={}",
+                        appointmentId, oldPaymentStatus, request.paymentStatus());
+
                 if (request.paymentStatus() == PaymentStatus.PAGO && appointment.getPaidAt() == null) {
                     appointment.setPaidAt(finishedAt);
+                    log.info("Pagamento registrado na finalização | appointmentId={} | valor={}",
+                            appointmentId, appointment.getTotalValue());
                 }
                 if (request.paymentStatus() == PaymentStatus.CANCELADO) {
                     appointment.setPaidAt(null);
                 }
                 if (request.paymentStatus() == PaymentStatus.PAGO && oldPaymentStatus != PaymentStatus.PAGO) {
+                    log.info("Sincronizando transação financeira | appointmentId={}", appointmentId);
                     financialSyncService.syncAppointmentPayment(appointment);
                 }
             }
             if (request.paymentMethod() != null) {
                 appointment.setPaymentMethod(request.paymentMethod());
+                log.debug("Método de pagamento registrado | appointmentId={} | metodo={}", appointmentId, request.paymentMethod());
             }
         }
 
         appointment = appointmentRepository.save(appointment);
+        log.info("Atendimento finalizado | appointmentId={} | patientId={} | finishedAt={}",
+                appointment.getId(), appointment.getPatient().getId(), finishedAt);
         return mapper.toResponse(appointment);
     }
 }

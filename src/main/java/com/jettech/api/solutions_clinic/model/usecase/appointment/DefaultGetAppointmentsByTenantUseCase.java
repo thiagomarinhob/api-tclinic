@@ -5,6 +5,7 @@ import com.jettech.api.solutions_clinic.model.repository.AppointmentRepository;
 import com.jettech.api.solutions_clinic.model.repository.TenantRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import com.jettech.api.solutions_clinic.exception.AuthenticationFailedException;
@@ -16,6 +17,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class DefaultGetAppointmentsByTenantUseCase implements GetAppointmentsByTenantUseCase {
@@ -27,6 +29,10 @@ public class DefaultGetAppointmentsByTenantUseCase implements GetAppointmentsByT
 
     @Override
     public List<AppointmentResponse> execute(GetAppointmentsByTenantRequest request) throws AuthenticationFailedException {
+        log.info("Listando agendamentos do tenant | tenantId={} | filtros: date={} | startDate={} | endDate={} | status={} | orderBy={}",
+                request.tenantId(), request.date(), request.startDate(), request.endDate(),
+                request.status(), request.orderBy());
+
         tenantContext.requireSameTenant(request.tenantId());
         tenantRepository.findById(request.tenantId())
                 .orElseThrow(() -> new EntityNotFoundException("Clínica", request.tenantId()));
@@ -77,6 +83,8 @@ public class DefaultGetAppointmentsByTenantUseCase implements GetAppointmentsByT
 
         // Aplicar ordenação
         appointments = applyOrdering(appointments, request.orderBy());
+
+        log.info("Agendamentos retornados | tenantId={} | total={}", request.tenantId(), appointments.size());
 
         return appointments.stream()
                 .map(mapper::toResponse)
