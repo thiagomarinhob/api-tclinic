@@ -117,11 +117,12 @@ class AppointmentFixtures {
     static AppointmentResponse appointmentResponse() {
         return new AppointmentResponse(
                 APPOINTMENT_ID, TENANT_ID, PATIENT_ID, PROFESSIONAL_ID, null,
+                null, null, null,
                 SCHEDULED_AT, DURATION_MINUTES, AppointmentStatus.AGENDADO,
                 null, null, null, null, null,
                 TOTAL_VALUE, null, PaymentStatus.PENDENTE, null,
                 CREATED_BY_ID, LocalDateTime.now(), LocalDateTime.now(),
-                null, java.util.List.of()
+                null, java.util.List.of(), null
         );
     }
 }

@@ -2,6 +2,7 @@ package com.jettech.api.solutions_clinic.model.repository;
 
 import com.jettech.api.solutions_clinic.model.entity.Appointment;
 import com.jettech.api.solutions_clinic.model.entity.AppointmentStatus;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -13,13 +14,46 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface AppointmentRepository extends JpaRepository<Appointment, UUID> {
+
+    @Override
+    @EntityGraph(attributePaths = {
+            "tenant",
+            "patient",
+            "professional",
+            "professional.user",
+            "room",
+            "createdBy",
+            "procedures",
+            "procedures.procedure"
+    })
+    Optional<Appointment> findById(UUID id);
     
+    @EntityGraph(attributePaths = {
+            "tenant",
+            "patient",
+            "professional",
+            "professional.user",
+            "room",
+            "createdBy",
+            "procedures",
+            "procedures.procedure"
+    })
     List<Appointment> findByProfessionalId(UUID professionalId);
     
     List<Appointment> findByPatientId(UUID patientId);
     
     List<Appointment> findByRoomId(UUID roomId);
     
+    @EntityGraph(attributePaths = {
+            "tenant",
+            "patient",
+            "professional",
+            "professional.user",
+            "room",
+            "createdBy",
+            "procedures",
+            "procedures.procedure"
+    })
     List<Appointment> findByProfessionalIdAndScheduledAtBetween(
             UUID professionalId, 
             LocalDateTime start, 
@@ -43,19 +77,59 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
     Optional<Appointment> findByIdAndStatus(UUID id, AppointmentStatus status);
     
     // Métodos para buscar por tenant com filtros
+    @EntityGraph(attributePaths = {
+            "tenant",
+            "patient",
+            "professional",
+            "professional.user",
+            "room",
+            "createdBy",
+            "procedures",
+            "procedures.procedure"
+    })
     List<Appointment> findByTenantId(UUID tenantId);
     
+    @EntityGraph(attributePaths = {
+            "tenant",
+            "patient",
+            "professional",
+            "professional.user",
+            "room",
+            "createdBy",
+            "procedures",
+            "procedures.procedure"
+    })
     List<Appointment> findByTenantIdAndScheduledAtBetween(
             UUID tenantId,
             LocalDateTime start,
             LocalDateTime end
     );
     
+    @EntityGraph(attributePaths = {
+            "tenant",
+            "patient",
+            "professional",
+            "professional.user",
+            "room",
+            "createdBy",
+            "procedures",
+            "procedures.procedure"
+    })
     List<Appointment> findByTenantIdAndStatus(
             UUID tenantId,
             AppointmentStatus status
     );
     
+    @EntityGraph(attributePaths = {
+            "tenant",
+            "patient",
+            "professional",
+            "professional.user",
+            "room",
+            "createdBy",
+            "procedures",
+            "procedures.procedure"
+    })
     List<Appointment> findByTenantIdAndScheduledAtBetweenAndStatus(
             UUID tenantId,
             LocalDateTime start,
