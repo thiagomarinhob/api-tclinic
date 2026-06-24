@@ -1,67 +1,30 @@
 services:
-  evolution-api:
-    image: atendai/evolution-api:v2.2.3
-    container_name: evolution-api
-    restart: always
+  postgres-evolution-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  evolution-go:
+    image: evoapicloud/evolution-go:latest
     ports:
       - "8081:8080"
     environment:
-      - SERVER_URL=https://evolution.tclinic.com.br
-      - AUTHENTICATION_TYPE=apikey
-      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:?EVOLUTION_API_KEY is required}
-      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
-
-      - DATABASE_ENABLED=true
-      - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://evolution:${EVOLUTION_DB_PASSWORD:?EVOLUTION_DB_PASSWORD is required}@postgres-evolution:5432/evolution
-
-      - WEBHOOK_GLOBAL_ENABLED=true
-      - WEBHOOK_GLOBAL_URL=https://api.tclinic.com.br/v1/whatsapp/webhook
-      - WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS=false
-      - WEBHOOK_EVENTS_MESSAGES_UPSERT=true
-      - WEBHOOK_EVENTS_MESSAGES_UPDATE=true
-      - CONFIG_SESSION_PHONE_VERSION=2.3000.1040191107
-
-      - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=redis://redis-evolution:6379
-    volumes:
-      - evolution_data:/evolution/instances
+      SERVER_PORT: 8080
+      CLIENT_NAME: evolution
+      GLOBAL_API_KEY: sua-chave-segura-aqui
+      POSTGRES_AUTH_DB: postgresql://postgres:password@postgres-evolution-db:5432/evogo_auth?sslmode=disable
+      POSTGRES_USERS_DB: postgresql://postgres:password@postgres-evolution-db:5432/evogo_users?sslmode=disable
+      DATABASE_SAVE_MESSAGES: "false"
+      WADEBUG: INFO
+      LOGTYPE: console
     depends_on:
-      - postgres-evolution
-      - redis-evolution
-    networks:
-      - solutions-network
-      - evolution-internal
-
-  postgres-evolution:
-    image: postgres:16-alpine
-    container_name: postgres-evolution
-    restart: always
-    environment:
-      - POSTGRES_USER=evolution
-      - POSTGRES_PASSWORD=${EVOLUTION_DB_PASSWORD:?EVOLUTION_DB_PASSWORD is required}
-      - POSTGRES_DB=evolution
-    volumes:
-      - postgres_evolution_data:/var/lib/postgresql/data
-    networks:
-      - evolution-internal
-
-  redis-evolution:
-    image: redis:7-alpine
-    container_name: redis-evolution
-    restart: always
-    volumes:
-      - redis_evolution_data:/data
-    networks:
-      - evolution-internal
+      - postgres-evolution-db
+    restart: unless-stopped
 
 volumes:
-  evolution_data:
-  postgres_evolution_data:
-  redis_evolution_data:
-
-networks:
-  solutions-network:
-    external: true
-  evolution-internal:
-    driver: bridge
+  postgres_data:

@@ -30,7 +30,7 @@ public class WhatsAppNotificationService {
     private final ObjectMapper objectMapper;
 
     /**
-     * Envia mensagem de confirmação de agendamento com botões via Baileys (Evolution API V2).
+     * Envia mensagem de lembrete de agendamento via Evolution API.
      *
      * @return Optional com o ID da mensagem retornado pela Evolution, ou vazio em falha
      */
@@ -72,24 +72,45 @@ public class WhatsAppNotificationService {
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
+        log.info("[WhatsApp] Enviando lembrete → número={} instância={}", maskPhone(normalizedTo), whatsAppConfig.getInstanceName());
+
         try {
             ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            log.debug("[WhatsApp] Evolution sendText response status={} body={}", response.getStatusCode(), response.getBody());
+
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null && !response.getBody().isBlank()) {
                 JsonNode root = objectMapper.readTree(response.getBody());
-                String messageId = root.path("key").path("id").asText("");
+                String messageId = extractMessageId(root);
                 if (!messageId.isBlank()) {
-                    log.debug("Lembrete enviado via Evolution, messageId={}", messageId);
+                    log.info("[WhatsApp] Mensagem aceita pela Evolution — número={} messageId={}", maskPhone(normalizedTo), messageId);
                     return Optional.of(messageId);
                 }
-                log.debug("Lembrete enviado via Evolution (resposta sem key.id)");
+                log.warn("[WhatsApp] Evolution retornou 2xx mas sem messageId — número={} response={}", maskPhone(normalizedTo), response.getBody());
                 return Optional.empty();
             }
-            log.warn("Evolution API respondeu status {}: {}", response.getStatusCode(), response.getBody());
+            log.warn("[WhatsApp] Evolution respondeu status={} — número={} body={}", response.getStatusCode(), maskPhone(normalizedTo), response.getBody());
             return Optional.empty();
         } catch (Exception e) {
-            log.error("Erro ao enviar lembrete WhatsApp via Evolution: {}", e.getMessage());
+            log.error("[WhatsApp] Falha ao chamar Evolution — número={} erro={}", maskPhone(normalizedTo), e.getMessage());
             throw new ServiceUnavailableException(ApiError.WHATSAPP_SEND_FAILED);
         }
+    }
+
+    /**
+     * Tenta extrair o ID da mensagem da resposta do Evolution API.
+     * Cobre a estrutura padrão (key.id) e variações do Evolution Go (id na raiz).
+     */
+    private static String extractMessageId(JsonNode root) {
+        // Formato padrão Evolution V2 / Go: { "key": { "id": "..." } }
+        String id = root.path("key").path("id").asText("");
+        if (!id.isBlank()) return id;
+
+        // Fallback: id na raiz — algumas versões do Evolution Go
+        id = root.path("id").asText("");
+        if (!id.isBlank()) return id;
+
+        // Fallback adicional: { "message": { "key": { "id": "..." } } }
+        return root.path("message").path("key").path("id").asText("");
     }
 
     /**
