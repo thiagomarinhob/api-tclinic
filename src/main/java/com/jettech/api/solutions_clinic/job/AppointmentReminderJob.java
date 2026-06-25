@@ -70,8 +70,13 @@ public class AppointmentReminderJob {
 
     private void sendWhatsAppReminder(Appointment appointment) {
         Patient patient = appointment.getPatient();
+
+        log.info("[WhatsApp] Processando lembrete — agendamento={} paciente={} consulta={}",
+                appointment.getId(), patient.getId(), appointment.getScheduledAt());
+
         if (patient.getWhatsapp() == null || patient.getWhatsapp().isBlank()) {
-            log.debug("Paciente {} sem WhatsApp; lembrete ignorado.", patient.getId());
+            log.info("[WhatsApp] Paciente {} sem WhatsApp cadastrado; lembrete ignorado (agendamento={}).",
+                    patient.getId(), appointment.getId());
             return;
         }
 
@@ -87,13 +92,13 @@ public class AppointmentReminderJob {
 
         messageIdOpt.ifPresent(id -> {
             appointment.setWhatsappMessageId(id);
-            log.info("Lembrete WhatsApp enviado para paciente {} (agendamento {}), wamid={}",
-                    patient.getId(), appointment.getId(), id);
+            log.info("[WhatsApp] Lembrete enviado — agendamento={} paciente={} wamid={}",
+                    appointment.getId(), patient.getId(), id);
         });
 
         if (messageIdOpt.isEmpty()) {
-            log.warn("Lembrete WhatsApp não enviado para paciente {} (agendamento {}).",
-                    patient.getId(), appointment.getId());
+            log.warn("[WhatsApp] Lembrete NÃO enviado — agendamento={} paciente={}.",
+                    appointment.getId(), patient.getId());
         }
     }
 }

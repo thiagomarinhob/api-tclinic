@@ -20,10 +20,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Processa webhook da Evolution API V2 (Baileys).
+ * Processa webhook da Evolution API (V2 / Go).
  *
  * Payload esperado para resposta em texto:
- *   event = "messages.upsert"
+ *   event = "messages.upsert" (case-insensitive)
  *   data.messageType = "conversation" | "extendedTextMessage"
  *   data.message.conversation = "1" (confirmar) | "2" (cancelar)
  *   data.message.extendedTextMessage.contextInfo.stanzaId = ID da mensagem original
@@ -53,7 +53,8 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
         try {
             JsonNode root = objectMapper.readTree(request.body());
 
-            if (!EVENT_MESSAGES_UPSERT.equals(root.path("event").asText())) {
+            String event = root.path("event").asText("");
+            if (!EVENT_MESSAGES_UPSERT.equalsIgnoreCase(event)) {
                 return;
             }
 
@@ -70,20 +71,24 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
             String text;
             String stanzaId;
             if ("conversation".equals(messageType)) {
-                text      = data.path("message").path("conversation").asText("").trim();
-                stanzaId  = "";
+                text     = data.path("message").path("conversation").asText("").trim();
+                stanzaId = "";
             } else if ("extendedTextMessage".equals(messageType)) {
                 JsonNode ext = data.path("message").path("extendedTextMessage");
                 text     = ext.path("text").asText("").trim();
                 stanzaId = ext.path("contextInfo").path("stanzaId").asText("").trim();
             } else {
+                log.info("[WhatsApp] Webhook ignorado — messageType='{}' não tratado (remoteJid={})", messageType, maskJid(remoteJid));
                 return;
             }
 
             if (!TEXT_CONFIRMAR.equals(text) && !TEXT_CANCELAR.equals(text)) {
-                log.debug("Webhook Evolution: texto '{}' não reconhecido, ignorado.", text);
+                log.debug("[WhatsApp] Webhook ignorado — texto '{}' não é 1 nem 2 (remoteJid={})", text, maskJid(remoteJid));
                 return;
             }
+
+            log.info("[WhatsApp] Resposta reconhecida — texto='{}' remoteJid={} stanzaId='{}'",
+                    text, maskJid(remoteJid), stanzaId.isBlank() ? "(vazio)" : stanzaId);
 
             processTextResponse(text, stanzaId, remoteJid);
 
@@ -97,19 +102,25 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
 
         if (!stanzaId.isBlank()) {
             appointmentOpt = appointmentRepository.findByWhatsappMessageId(stanzaId);
+            if (appointmentOpt.isPresent()) {
+                log.info("[WhatsApp] Agendamento {} encontrado por stanzaId={}", appointmentOpt.get().getId(), stanzaId);
+            }
         }
 
         if (appointmentOpt.isEmpty()) {
+            log.info("[WhatsApp] Agendamento não encontrado por stanzaId='{}'; tentando fallback por telefone (remoteJid={})",
+                    stanzaId.isBlank() ? "(vazio)" : stanzaId, maskJid(remoteJid));
             appointmentOpt = findAppointmentBySenderJid(remoteJid, stanzaId);
             if (appointmentOpt.isEmpty()) {
-                log.warn("Webhook Evolution: nenhum agendamento encontrado para stanzaId={} remoteJid={}", stanzaId, remoteJid);
+                log.warn("[WhatsApp] Nenhum agendamento encontrado — stanzaId='{}' remoteJid={}",
+                        stanzaId.isBlank() ? "(vazio)" : stanzaId, maskJid(remoteJid));
                 return;
             }
             if (!stanzaId.isBlank()) {
                 Appointment a = appointmentOpt.get();
                 a.setWhatsappMessageId(stanzaId);
                 appointmentRepository.save(a);
-                log.info("Webhook Evolution: agendamento {} vinculado ao stanzaId={} (fallback por telefone)", a.getId(), stanzaId);
+                log.info("[WhatsApp] Agendamento {} vinculado ao stanzaId={} via fallback por telefone", a.getId(), stanzaId);
             }
         }
 
@@ -120,7 +131,10 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
                 appointment.setStatus(AppointmentStatus.CONFIRMADO);
                 appointmentRepository.save(appointment);
                 notificationCreator.createAppointmentConfirmation(appointment);
-                log.info("Agendamento {} confirmado via WhatsApp (remoteJid={})", appointment.getId(), remoteJid);
+                log.info("[WhatsApp] Agendamento {} CONFIRMADO via WhatsApp (remoteJid={})", appointment.getId(), maskJid(remoteJid));
+            } else {
+                log.warn("[WhatsApp] Confirmação ignorada — agendamento={} já está em status={}",
+                        appointment.getId(), appointment.getStatus());
             }
         } else if (TEXT_CANCELAR.equals(text)) {
             if (appointment.getStatus() == AppointmentStatus.AGENDADO || appointment.getStatus() == AppointmentStatus.CONFIRMADO) {
@@ -128,7 +142,10 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
                 appointment.setCancelledAt(LocalDateTime.now());
                 appointmentRepository.save(appointment);
                 notificationCreator.createAppointmentCancellation(appointment);
-                log.info("Agendamento {} cancelado via WhatsApp (remoteJid={})", appointment.getId(), remoteJid);
+                log.info("[WhatsApp] Agendamento {} CANCELADO via WhatsApp (remoteJid={})", appointment.getId(), maskJid(remoteJid));
+            } else {
+                log.warn("[WhatsApp] Cancelamento ignorado — agendamento={} já está em status={}",
+                        appointment.getId(), appointment.getStatus());
             }
         }
     }
@@ -142,13 +159,22 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
         }
         List<Patient> patients = patientRepository.findByWhatsappNormalized(normalizedPhone);
         if (patients.isEmpty()) {
-            log.debug("Webhook Evolution: nenhum paciente com whatsapp {} (jid={})", normalizedPhone, remoteJid);
+            log.warn("[WhatsApp] Nenhum paciente cadastrado com whatsapp={} (remoteJid={})", normalizedPhone, maskJid(remoteJid));
             return Optional.empty();
         }
+        log.info("[WhatsApp] {} paciente(s) encontrado(s) para remoteJid={}", patients.size(), maskJid(remoteJid));
         List<UUID> patientIds = patients.stream().map(Patient::getId).toList();
         return appointmentRepository.findFirstByPatientIdInAndStatusInOrderByScheduledAtDesc(
                 patientIds,
                 List.of(AppointmentStatus.AGENDADO, AppointmentStatus.CONFIRMADO)
         );
+    }
+
+    private static String maskJid(String jid) {
+        if (jid == null || jid.length() < 4) return "***";
+        int atIdx = jid.indexOf('@');
+        String number = atIdx > 0 ? jid.substring(0, atIdx) : jid;
+        String suffix = atIdx > 0 ? jid.substring(atIdx) : "";
+        return "***" + number.substring(Math.max(0, number.length() - 4)) + suffix;
     }
 }
