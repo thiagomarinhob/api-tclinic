@@ -7,7 +7,7 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_evolution_data:/var/lib/postgresql/data
 
   evolution-go:
     image: evoapicloud/evolution-go:latest
@@ -16,7 +16,7 @@ services:
     environment:
       SERVER_PORT: 8080
       CLIENT_NAME: evolution
-      GLOBAL_API_KEY: sua-chave-segura-aqui
+      GLOBAL_API_KEY: 45c8b5e53217fefd4b771a26445ea3556ba5d8d670a830c6922fa6725335e07e
       POSTGRES_AUTH_DB: postgresql://postgres:password@postgres-evolution-db:5432/evogo_auth?sslmode=disable
       POSTGRES_USERS_DB: postgresql://postgres:password@postgres-evolution-db:5432/evogo_users?sslmode=disable
       DATABASE_SAVE_MESSAGES: "false"
@@ -27,4 +27,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres_data:
+  postgres_evolution_data:
