@@ -28,16 +28,26 @@ import java.util.UUID;
  *   data.Message.conversation = "1" (confirmar) | "2" (cancelar)
  *   data.Info.MsgMetaInfo.TargetID = ID da mensagem original (quando é reply)
  *   data.Info.Sender = "5511999999999@s.whatsapp.net"
- *   data.Info.IsFromMe = false (ignora mensagens enviadas pelo próprio sistema)
+ *   data.Info.IsFromMe = false
+ *
+ * Payload esperado para clique em botão (Evolution Go /send/buttons):
+ *   event = "Message"
+ *   data.Info.Type = "buttonsResponse"
+ *   data.Message.buttonsResponseMessage.selectedButtonId = "CONFIRM" | "CANCEL"
+ *   data.Info.MsgMetaInfo.TargetID = ID da mensagem original
+ *   data.Info.Sender = "5511999999999@s.whatsapp.net"
+ *   data.Info.IsFromMe = false
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebhookUseCase {
 
-    private static final String EVENT_MESSAGE = "Message";
-    private static final String TEXT_CONFIRMAR = "1";
-    private static final String TEXT_CANCELAR = "2";
+    private static final String EVENT_MESSAGE    = "Message";
+    private static final String TEXT_CONFIRMAR   = "1";
+    private static final String TEXT_CANCELAR    = "2";
+    private static final String BUTTON_CONFIRMAR = "CONFIRM";
+    private static final String BUTTON_CANCELAR  = "CANCEL";
 
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
@@ -70,14 +80,23 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
 
             String messageType = info.path("Type").asText("");
             String remoteJid   = info.path("Sender").asText("").trim();
+            String stanzaId    = info.path("MsgMetaInfo").path("TargetID").asText("").trim();
+
+            if ("buttonsResponse".equalsIgnoreCase(messageType)) {
+                String buttonId = data.path("Message").path("buttonsResponseMessage")
+                        .path("selectedButtonId").asText("").trim();
+                log.info("[WhatsApp] Clique em botão — buttonId='{}' remoteJid={} stanzaId='{}'",
+                        buttonId, maskJid(remoteJid), stanzaId.isBlank() ? "(vazio)" : stanzaId);
+                processButtonResponse(buttonId, stanzaId, remoteJid);
+                return;
+            }
 
             if (!"text".equalsIgnoreCase(messageType)) {
                 log.info("[WhatsApp] Webhook ignorado — Type='{}' não tratado (remoteJid={})", messageType, maskJid(remoteJid));
                 return;
             }
 
-            String text     = data.path("Message").path("conversation").asText("").trim();
-            String stanzaId = info.path("MsgMetaInfo").path("TargetID").asText("").trim();
+            String text = data.path("Message").path("conversation").asText("").trim();
 
             if (!TEXT_CONFIRMAR.equals(text) && !TEXT_CANCELAR.equals(text)) {
                 log.debug("[WhatsApp] Webhook ignorado — texto '{}' não é 1 nem 2 (remoteJid={})", text, maskJid(remoteJid));
@@ -92,6 +111,23 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
         } catch (Exception e) {
             log.warn("Erro ao processar webhook Evolution: {}", e.getMessage());
         }
+    }
+
+    private void processButtonResponse(String buttonId, String stanzaId, String remoteJid) {
+        if (buttonId.isBlank()) {
+            log.warn("[WhatsApp] buttonsResponse sem selectedButtonId — remoteJid={}", maskJid(remoteJid));
+            return;
+        }
+        String text;
+        if (BUTTON_CONFIRMAR.equalsIgnoreCase(buttonId)) {
+            text = TEXT_CONFIRMAR;
+        } else if (BUTTON_CANCELAR.equalsIgnoreCase(buttonId)) {
+            text = TEXT_CANCELAR;
+        } else {
+            log.warn("[WhatsApp] buttonId '{}' desconhecido — remoteJid={}", buttonId, maskJid(remoteJid));
+            return;
+        }
+        processTextResponse(text, stanzaId, remoteJid);
     }
 
     private void processTextResponse(String text, String stanzaId, String remoteJid) {

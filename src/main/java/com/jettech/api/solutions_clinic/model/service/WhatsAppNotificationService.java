@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -92,6 +93,77 @@ public class WhatsAppNotificationService {
             return Optional.empty();
         } catch (Exception e) {
             log.error("[WhatsApp] Falha ao chamar Evolution — número={} erro={}", maskPhone(normalizedTo), e.getMessage());
+            throw new ServiceUnavailableException(ApiError.WHATSAPP_SEND_FAILED);
+        }
+    }
+
+    /**
+     * Envia lembrete de agendamento com botões interativos via Evolution Go (/send/buttons).
+     * O paciente vê "✅ Confirmar" e "❌ Cancelar" como botões clicáveis.
+     * O id do botão clicado (CONFIRM / CANCEL) chega no webhook como buttonsResponseMessage.
+     */
+    public Optional<String> sendAppointmentReminderWithButtonsReturningMessageId(
+            String to,
+            String nomePaciente,
+            String nomeClinica,
+            String dataConsulta,
+            String horarioConsulta,
+            String telefoneContato) {
+
+        if (!whatsAppConfig.isConfigured()) {
+            log.warn("Evolution API não configurada; lembrete (buttons) não enviado para {}", maskPhone(to));
+            return Optional.empty();
+        }
+
+        String normalizedTo = normalizePhone(to);
+        if (normalizedTo == null || normalizedTo.length() < 10) {
+            log.warn("Número WhatsApp inválido: {}", maskPhone(to));
+            return Optional.empty();
+        }
+
+        String descricao = String.format(
+                "Olá, %s! Você tem consulta na %s no dia %s, às %s.",
+                nomePaciente, nomeClinica, dataConsulta, horarioConsulta);
+
+        Map<String, Object> btnConfirmar = Map.of("id", "CONFIRM", "label", "✅ Confirmar");
+        Map<String, Object> btnCancelar  = Map.of("id", "CANCEL",  "label", "❌ Cancelar");
+
+        Map<String, Object> body = Map.of(
+                "number",      normalizedTo,
+                "title",       "📅 Confirmação de Consulta",
+                "description", descricao,
+                "footer",      "Dúvidas? " + telefoneContato,
+                "buttons",     List.of(btnConfirmar, btnCancelar)
+        );
+
+        String url = whatsAppConfig.getApiUrl() + "/send/buttons";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("apikey", whatsAppConfig.getInstanceToken());
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
+        log.info("[WhatsApp] Enviando lembrete (buttons) → número={} instância={}", maskPhone(normalizedTo), whatsAppConfig.getInstanceName());
+
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            log.debug("[WhatsApp] Evolution sendButtons response status={} body={}", response.getStatusCode(), response.getBody());
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null && !response.getBody().isBlank()) {
+                JsonNode root = objectMapper.readTree(response.getBody());
+                String messageId = extractMessageId(root);
+                if (!messageId.isBlank()) {
+                    log.info("[WhatsApp] Mensagem (buttons) aceita — número={} messageId={}", maskPhone(normalizedTo), messageId);
+                    return Optional.of(messageId);
+                }
+                log.warn("[WhatsApp] Evolution retornou 2xx mas sem messageId (buttons) — número={} response={}", maskPhone(normalizedTo), response.getBody());
+                return Optional.empty();
+            }
+            log.warn("[WhatsApp] Evolution respondeu status={} (buttons) — número={} body={}", response.getStatusCode(), maskPhone(normalizedTo), response.getBody());
+            return Optional.empty();
+        } catch (Exception e) {
+            log.error("[WhatsApp] Falha ao chamar Evolution (buttons) — número={} erro={}", maskPhone(normalizedTo), e.getMessage());
             throw new ServiceUnavailableException(ApiError.WHATSAPP_SEND_FAILED);
         }
     }
