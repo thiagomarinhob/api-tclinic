@@ -15,6 +15,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        "[jdbc.time_zone]": America/Sao_Paulo
         envers:
           audit_table_suffix: _AUD
           revision_field_name: rev
