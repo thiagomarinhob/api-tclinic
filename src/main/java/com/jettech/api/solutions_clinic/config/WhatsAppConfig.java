@@ -14,9 +14,6 @@ public class WhatsAppConfig {
     @Value("${evolution.api.url:}")
     private String apiUrl;
 
-    @Value("${evolution.api.key:}")
-    private String apiKey;
-
     @Value("${evolution.instance.name:tclinic}")
     private String instanceName;
 

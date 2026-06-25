@@ -43,8 +43,15 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
         Pageable pageable
     );
 
-    /** Busca pacientes cujo WhatsApp (apenas dígitos) coincide com o número normalizado. Usado no fallback do webhook. */
-    @Query(value = "SELECT * FROM patients WHERE REGEXP_REPLACE(COALESCE(whatsapp, ''), '[^0-9]', '', 'g') = :normalizedPhone", nativeQuery = true)
-    List<Patient> findByWhatsappNormalized(@Param("normalizedPhone") String normalizedPhone);
+    /**
+     * Busca pacientes cujo WhatsApp coincide com o número normalizado.
+     * Aceita números com ou sem DDI 55 para cobrir os dois formatos de cadastro:
+     *   normalizedPhone  = "5511999999999" (com DDI, vindo do webhook)
+     *   localPhone       = "11999999999"   (sem DDI, como muitos usuários cadastram)
+     */
+    @Query(value = "SELECT * FROM patients WHERE REGEXP_REPLACE(COALESCE(whatsapp, ''), '[^0-9]', '', 'g') IN (:normalizedPhone, :localPhone)", nativeQuery = true)
+    List<Patient> findByWhatsappNormalized(
+            @Param("normalizedPhone") String normalizedPhone,
+            @Param("localPhone") String localPhone);
 }
 

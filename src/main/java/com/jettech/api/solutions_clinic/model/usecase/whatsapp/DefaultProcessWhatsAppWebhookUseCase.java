@@ -54,14 +54,16 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
             JsonNode root = objectMapper.readTree(request.body());
 
             String event = root.path("event").asText("");
+            log.info("[WhatsApp] Evento recebido: '{}'", event);
             if (!EVENT_MESSAGES_UPSERT.equalsIgnoreCase(event)) {
+                log.info("[WhatsApp] Evento '{}' ignorado — aguardando apenas messages.upsert", event);
                 return;
             }
 
             JsonNode data = root.path("data");
 
-            // Ignora mensagens enviadas pelo próprio sistema
             if (data.path("key").path("fromMe").asBoolean(false)) {
+                log.info("[WhatsApp] Mensagem ignorada — fromMe=true (enviada pelo próprio sistema)");
                 return;
             }
 
@@ -157,7 +159,8 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
         if (normalizedPhone == null || normalizedPhone.length() < 10) {
             return Optional.empty();
         }
-        List<Patient> patients = patientRepository.findByWhatsappNormalized(normalizedPhone);
+        String localPhone = normalizedPhone.startsWith("55") ? normalizedPhone.substring(2) : normalizedPhone;
+        List<Patient> patients = patientRepository.findByWhatsappNormalized(normalizedPhone, localPhone);
         if (patients.isEmpty()) {
             log.warn("[WhatsApp] Nenhum paciente cadastrado com whatsapp={} (remoteJid={})", normalizedPhone, maskJid(remoteJid));
             return Optional.empty();
