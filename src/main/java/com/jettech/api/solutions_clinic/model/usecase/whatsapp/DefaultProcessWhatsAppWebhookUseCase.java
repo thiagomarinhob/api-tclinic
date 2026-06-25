@@ -20,22 +20,22 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Processa webhook da Evolution API (V2 / Go).
+ * Processa webhook da Evolution API (Go).
  *
  * Payload esperado para resposta em texto:
- *   event = "messages.upsert" (case-insensitive)
- *   data.messageType = "conversation" | "extendedTextMessage"
- *   data.message.conversation = "1" (confirmar) | "2" (cancelar)
- *   data.message.extendedTextMessage.contextInfo.stanzaId = ID da mensagem original
- *   data.key.remoteJid = "5511999999999@s.whatsapp.net"
- *   data.key.fromMe = false (ignora mensagens enviadas pelo próprio sistema)
+ *   event = "Message"
+ *   data.Info.Type = "text"
+ *   data.Message.conversation = "1" (confirmar) | "2" (cancelar)
+ *   data.Info.MsgMetaInfo.TargetID = ID da mensagem original (quando é reply)
+ *   data.Info.Sender = "5511999999999@s.whatsapp.net"
+ *   data.Info.IsFromMe = false (ignora mensagens enviadas pelo próprio sistema)
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebhookUseCase {
 
-    private static final String EVENT_MESSAGES_UPSERT = "messages.upsert";
+    private static final String EVENT_MESSAGE = "Message";
     private static final String TEXT_CONFIRMAR = "1";
     private static final String TEXT_CANCELAR = "2";
 
@@ -55,34 +55,29 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
 
             String event = root.path("event").asText("");
             log.info("[WhatsApp] Evento recebido: '{}'", event);
-            if (!EVENT_MESSAGES_UPSERT.equalsIgnoreCase(event)) {
-                log.info("[WhatsApp] Evento '{}' ignorado — aguardando apenas messages.upsert", event);
+            if (!EVENT_MESSAGE.equalsIgnoreCase(event)) {
+                log.info("[WhatsApp] Evento '{}' ignorado — aguardando apenas Message", event);
                 return;
             }
 
             JsonNode data = root.path("data");
+            JsonNode info = data.path("Info");
 
-            if (data.path("key").path("fromMe").asBoolean(false)) {
-                log.info("[WhatsApp] Mensagem ignorada — fromMe=true (enviada pelo próprio sistema)");
+            if (info.path("IsFromMe").asBoolean(false)) {
+                log.info("[WhatsApp] Mensagem ignorada — IsFromMe=true (enviada pelo próprio sistema)");
                 return;
             }
 
-            String messageType = data.path("messageType").asText("");
-            String remoteJid   = data.path("key").path("remoteJid").asText("").trim();
+            String messageType = info.path("Type").asText("");
+            String remoteJid   = info.path("Sender").asText("").trim();
 
-            String text;
-            String stanzaId;
-            if ("conversation".equals(messageType)) {
-                text     = data.path("message").path("conversation").asText("").trim();
-                stanzaId = "";
-            } else if ("extendedTextMessage".equals(messageType)) {
-                JsonNode ext = data.path("message").path("extendedTextMessage");
-                text     = ext.path("text").asText("").trim();
-                stanzaId = ext.path("contextInfo").path("stanzaId").asText("").trim();
-            } else {
-                log.info("[WhatsApp] Webhook ignorado — messageType='{}' não tratado (remoteJid={})", messageType, maskJid(remoteJid));
+            if (!"text".equalsIgnoreCase(messageType)) {
+                log.info("[WhatsApp] Webhook ignorado — Type='{}' não tratado (remoteJid={})", messageType, maskJid(remoteJid));
                 return;
             }
+
+            String text     = data.path("Message").path("conversation").asText("").trim();
+            String stanzaId = info.path("MsgMetaInfo").path("TargetID").asText("").trim();
 
             if (!TEXT_CONFIRMAR.equals(text) && !TEXT_CANCELAR.equals(text)) {
                 log.debug("[WhatsApp] Webhook ignorado — texto '{}' não é 1 nem 2 (remoteJid={})", text, maskJid(remoteJid));
