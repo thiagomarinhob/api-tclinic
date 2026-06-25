@@ -20,6 +20,9 @@ public class WhatsAppConfig {
     @Value("${evolution.instance.name:tclinic}")
     private String instanceName;
 
+    @Value("${evolution.instance.token:}")
+    private String instanceToken;
+
     @PostConstruct
     public void init() {
         if (isConfigured()) {
@@ -31,7 +34,6 @@ public class WhatsAppConfig {
 
     public boolean isConfigured() {
         return apiUrl != null && !apiUrl.isBlank()
-                && apiKey != null && !apiKey.isBlank()
-                && instanceName != null && !instanceName.isBlank();
+                && instanceToken != null && !instanceToken.isBlank();
     }
 }

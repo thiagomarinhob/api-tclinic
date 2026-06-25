@@ -64,11 +64,11 @@ public class WhatsAppNotificationService {
                 "text", texto
         );
 
-        String url = whatsAppConfig.getApiUrl() + "/message/sendText/" + whatsAppConfig.getInstanceName();
+        String url = whatsAppConfig.getApiUrl() + "/send/text";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("apikey", whatsAppConfig.getApiKey());
+        headers.set("apikey", whatsAppConfig.getInstanceToken());
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 

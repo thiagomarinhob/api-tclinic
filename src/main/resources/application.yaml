@@ -52,8 +52,9 @@ evolution:
   api:
     url: ${EVOLUTION_API_URL:}
     key: ${EVOLUTION_API_KEY:}
-    instance:
-      name: ${EVOLUTION_INSTANCE_NAME:tclinic}
+  instance:
+    name: ${EVOLUTION_INSTANCE_NAME:tclinic}
+    token: ${EVOLUTION_INSTANCE_TOKEN:}
 
 resend:
   api:
