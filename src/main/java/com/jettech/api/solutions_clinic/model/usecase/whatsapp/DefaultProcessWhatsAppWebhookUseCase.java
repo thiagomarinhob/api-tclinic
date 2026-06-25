@@ -162,10 +162,18 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
         }
         log.info("[WhatsApp] {} paciente(s) encontrado(s) para remoteJid={}", patients.size(), maskJid(remoteJid));
         List<UUID> patientIds = patients.stream().map(Patient::getId).toList();
-        return appointmentRepository.findFirstByPatientIdInAndStatusInOrderByScheduledAtDesc(
-                patientIds,
-                List.of(AppointmentStatus.AGENDADO, AppointmentStatus.CONFIRMADO)
-        );
+        List<AppointmentStatus> activeStatuses = List.of(AppointmentStatus.AGENDADO, AppointmentStatus.CONFIRMADO);
+
+        Optional<Appointment> byReminder = appointmentRepository
+                .findFirstByPatientIdInAndStatusInAndReminderSentAtIsNotNullOrderByReminderSentAtDesc(patientIds, activeStatuses);
+        if (byReminder.isPresent()) {
+            log.info("[WhatsApp] Fallback: agendamento {} selecionado pelo lembrete mais recente (remoteJid={})",
+                    byReminder.get().getId(), maskJid(remoteJid));
+            return byReminder;
+        }
+
+        log.info("[WhatsApp] Fallback: nenhum agendamento com lembrete enviado; usando scheduledAt DESC (remoteJid={})", maskJid(remoteJid));
+        return appointmentRepository.findFirstByPatientIdInAndStatusInOrderByScheduledAtDesc(patientIds, activeStatuses);
     }
 
     private static String maskJid(String jid) {

@@ -153,7 +153,16 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
             @Param("status")      AppointmentStatus status
     );
 
-    /** Fallback: agendamento mais recente (AGENDADO ou CONFIRMADO) entre os pacientes informados. */
+    /**
+     * Fallback primário: agendamento cujo lembrete WhatsApp foi enviado mais recentemente.
+     * Garante que, quando o paciente responde sem usar "reply", pegamos a mensagem que ele recebeu por último.
+     */
+    Optional<Appointment> findFirstByPatientIdInAndStatusInAndReminderSentAtIsNotNullOrderByReminderSentAtDesc(
+            List<UUID> patientIds,
+            List<AppointmentStatus> statuses
+    );
+
+    /** Fallback secundário: agendamento mais recente por data de agendamento (AGENDADO ou CONFIRMADO). */
     Optional<Appointment> findFirstByPatientIdInAndStatusInOrderByScheduledAtDesc(
             List<UUID> patientIds,
             List<AppointmentStatus> statuses
