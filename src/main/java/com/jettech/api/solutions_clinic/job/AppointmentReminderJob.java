@@ -46,11 +46,13 @@ public class AppointmentReminderJob {
         LocalDateTime windowStart = now.plusMinutes(REMINDER_MINUTES_BEFORE - WINDOW_HALF_MINUTES);
         LocalDateTime windowEnd   = now.plusMinutes(REMINDER_MINUTES_BEFORE + WINDOW_HALF_MINUTES);
 
+        log.info("[AppointmentReminderJob] Job disparado - janela de busca: {} ate {}.", windowStart, windowEnd);
+
         List<Appointment> upcoming = appointmentRepository.findAppointmentsForReminder(
                 windowStart, windowEnd, AppointmentStatus.AGENDADO);
 
         if (upcoming.isEmpty()) {
-            log.debug("Nenhum agendamento para lembrete entre {} e {}.", windowStart, windowEnd);
+            log.info("[AppointmentReminderJob] Nenhum agendamento encontrado na janela.");
             return;
         }
 
