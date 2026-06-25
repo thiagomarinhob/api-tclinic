@@ -3,7 +3,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${EVOLUTION_DB_PASSWORD:?EVOLUTION_DB_PASSWORD is required}
     ports:
       - "5433:5432"
     volumes:
@@ -16,15 +16,22 @@ services:
     environment:
       SERVER_PORT: 8080
       CLIENT_NAME: evolution
-      GLOBAL_API_KEY: 45c8b5e53217fefd4b771a26445ea3556ba5d8d670a830c6922fa6725335e07e
-      POSTGRES_AUTH_DB: postgresql://postgres:password@postgres-evolution-db:5432/evogo_auth?sslmode=disable
-      POSTGRES_USERS_DB: postgresql://postgres:password@postgres-evolution-db:5432/evogo_users?sslmode=disable
+      GLOBAL_API_KEY: ${EVOLUTION_API_KEY:?EVOLUTION_API_KEY is required}
+      POSTGRES_AUTH_DB: postgresql://postgres:${EVOLUTION_DB_PASSWORD:-evolution_pass}@postgres-evolution-db:5432/evogo_auth?sslmode=disable
+      POSTGRES_USERS_DB: postgresql://postgres:${EVOLUTION_DB_PASSWORD:-evolution_pass}@postgres-evolution-db:5432/evogo_users?sslmode=disable
       DATABASE_SAVE_MESSAGES: "false"
       WADEBUG: INFO
       LOGTYPE: console
     depends_on:
       - postgres-evolution-db
     restart: unless-stopped
+    networks:
+      - solutions-network
+      - default
 
 volumes:
   postgres_evolution_data:
+
+networks:
+  solutions-network:
+    external: true

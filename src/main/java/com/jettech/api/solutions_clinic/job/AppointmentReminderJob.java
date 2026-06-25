@@ -39,7 +39,7 @@ public class AppointmentReminderJob {
     private final AppointmentRepository appointmentRepository;
     private final WhatsAppNotificationService whatsAppNotificationService;
 
-    @Scheduled(cron = "0 */10 * * * *") // a cada 10 minutos
+    @Scheduled(cron = "0 */2 * * * *") // a cada 2 minutos
     @Transactional
     public void sendReminders() {
         LocalDateTime now         = LocalDateTime.now();
