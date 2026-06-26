@@ -44,6 +44,9 @@ public class User {
     @Column(nullable = false)
     private boolean blocked = false;
 
+    @Column(name = "is_platform_admin", nullable = false)
+    private boolean isPlatformAdmin = false;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
     @UpdateTimestamp
