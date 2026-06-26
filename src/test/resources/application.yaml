@@ -16,3 +16,45 @@ spring:
         format_sql: true
   flyway:
     enabled: false
+
+stripe:
+  api:
+    key: test-stripe-key
+    secret: test-stripe-secret
+  webhook:
+    secret: test-webhook-secret
+    success:
+      path: /success
+    cancel:
+      path: /cancel
+
+memed:
+  api:
+    key: test-memed-key
+    url: https://test.memed.com
+  secret:
+    key: test-memed-secret
+
+resend:
+  api:
+    key: test-resend-key
+  from: test@example.com
+
+app:
+  frontend:
+    url: http://localhost:3000
+  trial:
+    duration:
+      days: 14
+  r2:
+    account-id: test-account
+    bucket-name: test-bucket
+    access-key-id: test-access-key
+    secret-access-key: test-secret-key
+
+evolution:
+  api:
+    url: http://localhost:8080
+  instance:
+    name: test-instance
+    token: test-token
