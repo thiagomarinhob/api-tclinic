@@ -42,7 +42,7 @@ class WhatsAppNotificationServiceTest {
     }
 
     @Test
-    void shouldSendAppointmentReminderButtonsToEvolutionMessageEndpoint() {
+    void shouldSendAppointmentReminderInteractiveListToEvolutionEndpoint() {
         when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(String.class)))
                 .thenReturn(ResponseEntity.ok("{\"data\":{\"Info\":{\"ID\":\"message-123\"}},\"message\":\"success\"}"));
 
@@ -64,7 +64,7 @@ class WhatsAppNotificationServiceTest {
         verify(restTemplate).postForEntity(urlCaptor.capture(), requestCaptor.capture(), eq(String.class));
 
         assertThat(urlCaptor.getValue())
-                .isEqualTo("https://evolution.tclinic.com.br/send/button");
+                .isEqualTo("https://evolution.tclinic.com.br/send/list");
 
         HttpEntity<Map<String, Object>> request = requestCaptor.getValue();
         assertThat(request.getBody()).isNotNull();
@@ -72,15 +72,22 @@ class WhatsAppNotificationServiceTest {
         assertThat(request.getBody())
                 .containsEntry("number", "5585999998354")
                 .containsEntry("title", "📅 Confirmação de Consulta")
-                .containsEntry("footer", "Dúvidas? (85) 3333-4444");
+                .containsEntry("footerText", "Dúvidas? (85) 3333-4444")
+                .containsEntry("buttonText", "Responder");
 
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> buttons = (List<Map<String, Object>>) request.getBody().get("buttons");
+        List<Map<String, Object>> sections = (List<Map<String, Object>>) request.getBody().get("sections");
 
-        assertThat(buttons)
+        assertThat(sections).hasSize(1);
+        assertThat(sections.getFirst()).containsEntry("title", "Escolha uma opção");
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> rows = (List<Map<String, Object>>) sections.getFirst().get("rows");
+
+        assertThat(rows)
                 .containsExactly(
-                        Map.of("type", "reply", "id", "CONFIRM", "displayText", "✅ Confirmar"),
-                        Map.of("type", "reply", "id", "CANCEL", "displayText", "❌ Cancelar")
+                        Map.of("rowId", "CONFIRM", "title", "✅ Confirmar", "description", "Confirmar presença na consulta"),
+                        Map.of("rowId", "CANCEL", "title", "❌ Cancelar", "description", "Cancelar este agendamento")
                 );
     }
 

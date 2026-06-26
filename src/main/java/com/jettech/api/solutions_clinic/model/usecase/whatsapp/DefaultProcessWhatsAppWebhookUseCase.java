@@ -30,13 +30,15 @@ import java.util.UUID;
  *   data.Info.Sender = "5511999999999@s.whatsapp.net"
  *   data.Info.IsFromMe = false
  *
- * Payload esperado para clique em botão (Evolution Go /send/button):
+ * Payload esperado para seleção em lista (Evolution Go /send/list):
  *   event = "Message"
- *   data.Info.Type = "buttonsResponse"
- *   data.Message.buttonsResponseMessage.selectedButtonId = "CONFIRM" | "CANCEL"
+ *   data.Info.Type = "listResponse"
+ *   data.Message.listResponseMessage.singleSelectReply.selectedRowId = "CONFIRM" | "CANCEL"
  *   data.Info.MsgMetaInfo.TargetID = ID da mensagem original
  *   data.Info.Sender = "5511999999999@s.whatsapp.net"
  *   data.Info.IsFromMe = false
+ *
+ * Também aceita buttonsResponse para compatibilidade com lembretes enviados por /send/button.
  */
 @Slf4j
 @Service
@@ -91,6 +93,14 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
                 return;
             }
 
+            if ("listResponse".equalsIgnoreCase(messageType)) {
+                String rowId = extractSelectedRowId(data.path("Message"));
+                log.info("[WhatsApp] Seleção em lista — rowId='{}' remoteJid={} stanzaId='{}'",
+                        rowId, maskJid(remoteJid), stanzaId.isBlank() ? "(vazio)" : stanzaId);
+                processButtonResponse(rowId, stanzaId, remoteJid);
+                return;
+            }
+
             if (!"text".equalsIgnoreCase(messageType)) {
                 log.info("[WhatsApp] Webhook ignorado — Type='{}' não tratado (remoteJid={})", messageType, maskJid(remoteJid));
                 return;
@@ -128,6 +138,23 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
             return;
         }
         processTextResponse(text, stanzaId, remoteJid);
+    }
+
+    private static String extractSelectedRowId(JsonNode message) {
+        String rowId = message.path("listResponseMessage").path("singleSelectReply")
+                .path("selectedRowId").asText("").trim();
+        if (!rowId.isBlank()) return rowId;
+
+        rowId = message.path("listResponseMessage").path("singleSelectReply")
+                .path("selectedRowID").asText("").trim();
+        if (!rowId.isBlank()) return rowId;
+
+        rowId = message.path("ListResponseMessage").path("SingleSelectReply")
+                .path("SelectedRowID").asText("").trim();
+        if (!rowId.isBlank()) return rowId;
+
+        return message.path("listResponseMessage").path("singleSelectReply")
+                .path("rowId").asText("").trim();
     }
 
     private void processTextResponse(String text, String stanzaId, String remoteJid) {
