@@ -64,7 +64,7 @@ class WhatsAppNotificationServiceTest {
         verify(restTemplate).postForEntity(urlCaptor.capture(), requestCaptor.capture(), eq(String.class));
 
         assertThat(urlCaptor.getValue())
-                .isEqualTo("https://evolution.tclinic.com.br/message/sendButtons/tclinic-prd");
+                .isEqualTo("https://evolution.tclinic.com.br/send/button");
 
         HttpEntity<Map<String, Object>> request = requestCaptor.getValue();
         assertThat(request.getBody()).isNotNull();
@@ -107,7 +107,7 @@ class WhatsAppNotificationServiceTest {
         verify(restTemplate).postForEntity(urlCaptor.capture(), requestCaptor.capture(), eq(String.class));
 
         assertThat(urlCaptor.getValue())
-                .isEqualTo("https://evolution.tclinic.com.br/message/sendText/tclinic-prd");
+                .isEqualTo("https://evolution.tclinic.com.br/send/text");
 
         HttpEntity<Map<String, Object>> request = requestCaptor.getValue();
         assertThat(request.getBody()).isNotNull();

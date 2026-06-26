@@ -66,7 +66,7 @@ public class WhatsAppNotificationService {
                 "text", texto
         );
 
-        String url = buildMessageUrl("sendText");
+        String url = buildSendUrl("text");
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -137,7 +137,7 @@ public class WhatsAppNotificationService {
                 "buttons",     List.of(btnConfirmar, btnCancelar)
         );
 
-        String url = buildMessageUrl("sendButtons");
+        String url = buildSendUrl("button");
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -186,10 +186,10 @@ public class WhatsAppNotificationService {
         return root.path("message").path("key").path("id").asText("");
     }
 
-    private String buildMessageUrl(String endpoint) {
+    private String buildSendUrl(String endpoint) {
         String baseUrl = whatsAppConfig.getApiUrl().replaceAll("/+$", "");
         return UriComponentsBuilder.fromUriString(baseUrl)
-                .pathSegment("message", endpoint, whatsAppConfig.getInstanceName())
+                .pathSegment("send", endpoint)
                 .toUriString();
     }
 

@@ -30,7 +30,7 @@ import java.util.UUID;
  *   data.Info.Sender = "5511999999999@s.whatsapp.net"
  *   data.Info.IsFromMe = false
  *
- * Payload esperado para clique em botão (Evolution Go /message/sendButtons/{instance}):
+ * Payload esperado para clique em botão (Evolution Go /send/button):
  *   event = "Message"
  *   data.Info.Type = "buttonsResponse"
  *   data.Message.buttonsResponseMessage.selectedButtonId = "CONFIRM" | "CANCEL"
