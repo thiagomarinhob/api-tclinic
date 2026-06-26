@@ -116,16 +116,6 @@ public class TenantController implements TenantAPI {
     }
 
     @Override
-    public TenantResponse extendTrial(
-            @PathVariable UUID tenantId,
-            @Valid @RequestBody ExtendTrialBody body
-    ) throws AuthenticationFailedException {
-        log.warn("EXTENSAO DE TRIAL - tenantId: {}, additionalDays: {}", tenantId, body.additionalDays());
-        ExtendTrialRequest request = new ExtendTrialRequest(tenantId, body.additionalDays());
-        return extendTrialUseCase.execute(request);
-    }
-
-    @Override
     @Transactional(readOnly = true)
     public TenantResponse getCurrentTenant() throws AuthenticationFailedException {
         UUID tenantId = tenantContext.getRequiredClinicId();
