@@ -5,6 +5,8 @@ import com.jettech.api.solutions_clinic.model.entity.Tenant;
 import com.jettech.api.solutions_clinic.model.entity.User;
 import com.jettech.api.solutions_clinic.model.entity.UserTenantRole;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,5 +29,10 @@ public interface UserTenantRoleRepository extends JpaRepository<UserTenantRole, 
     List<UserTenantRole> findByUser_IdAndTenant_Id(UUID userId, UUID tenantId);
     
     boolean existsByUserAndTenantAndRole(User user, Tenant tenant, Role role);
+
+    Optional<UserTenantRole> findFirstByTenant_IdAndRoleOrderByCreatedAtAsc(UUID tenantId, Role role);
+
+    @Query("SELECT utr FROM user_tenant_role utr JOIN FETCH utr.user WHERE utr.tenant.id IN :tenantIds AND utr.role = 'OWNER' ORDER BY utr.createdAt ASC")
+    List<UserTenantRole> findOwnersByTenantIds(@Param("tenantIds") List<UUID> tenantIds);
 }
 
