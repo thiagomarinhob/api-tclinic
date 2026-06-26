@@ -51,7 +51,7 @@ class DefaultCreateAppointmentUseCaseTest {
     private AppointmentResponse expectedResponse;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         tenant = tenant();
         patient = patient();
         professional = professional(tenant);

@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.jettech.api.solutions_clinic.exception.AuthenticationFailedException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -79,7 +80,11 @@ public class DefaultAuthUserUseCase implements AuthUserUseCase {
         if (tenantId != null) {
             tokenBuilder.withClaim("clinicId", tenantId.toString());
         }
-        
+
+        if (user.isPlatformAdmin()) {
+            tokenBuilder.withClaim("permissions", List.of("admin:tenant:manage"));
+        }
+
         var token = tokenBuilder.sign(algorithm);
 
         log.info("Autenticação bem-sucedida - userId: {}, email: {}, tenantId: {}", user.getId(), user.getEmail(), tenantId);

@@ -44,7 +44,7 @@ class DefaultDeleteAppointmentUseCaseTest {
 
     @Test
     void shouldCancelAppointmentInsteadOfDeleting() throws Exception {
-        useCase.execute(APPOINTMENT_ID);
+        useCase.execute(new CancelAppointmentRequest(APPOINTMENT_ID, null));
 
         assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.CANCELADO);
         verify(appointmentRepository).save(appointment);
@@ -52,14 +52,14 @@ class DefaultDeleteAppointmentUseCaseTest {
 
     @Test
     void shouldSetCancelledAtTimestampOnCancellation() throws Exception {
-        useCase.execute(APPOINTMENT_ID);
+        useCase.execute(new CancelAppointmentRequest(APPOINTMENT_ID, null));
 
         assertThat(appointment.getCancelledAt()).isNotNull();
     }
 
     @Test
     void shouldSendCancellationEmailAfterCancellation() throws Exception {
-        useCase.execute(APPOINTMENT_ID);
+        useCase.execute(new CancelAppointmentRequest(APPOINTMENT_ID, null));
 
         verify(appointmentEmailService).sendCancellation(appointment);
     }
@@ -69,7 +69,7 @@ class DefaultDeleteAppointmentUseCaseTest {
         UUID unknownId = UUID.randomUUID();
         when(appointmentRepository.findById(unknownId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> useCase.execute(unknownId))
+        assertThatThrownBy(() -> useCase.execute(new CancelAppointmentRequest(unknownId, null)))
                 .isInstanceOf(EntityNotFoundException.class);
     }
 
@@ -77,7 +77,7 @@ class DefaultDeleteAppointmentUseCaseTest {
     void shouldThrowForbiddenWhenAppointmentBelongsToDifferentTenant() throws Exception {
         when(tenantContext.getRequiredClinicId()).thenReturn(OTHER_TENANT_ID);
 
-        assertThatThrownBy(() -> useCase.execute(APPOINTMENT_ID))
+        assertThatThrownBy(() -> useCase.execute(new CancelAppointmentRequest(APPOINTMENT_ID, null)))
                 .isInstanceOf(ForbiddenException.class);
     }
 
@@ -85,7 +85,7 @@ class DefaultDeleteAppointmentUseCaseTest {
     void shouldNotSendEmailWhenAppointmentNotFound() {
         when(appointmentRepository.findById(any())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> useCase.execute(UUID.randomUUID()));
+        assertThatThrownBy(() -> useCase.execute(new CancelAppointmentRequest(UUID.randomUUID(), null)));
 
         verify(appointmentEmailService, never()).sendCancellation(any());
     }
