@@ -32,6 +32,8 @@ public enum ApiError {
     ENTITY_NOT_FOUND_SCHEDULE(HttpStatus.NOT_FOUND, "error.entityNotFoundSchedule", "O profissional não possui agenda cadastrada para este dia da semana."),
 
     // --- 409 Conflict ---
+    TENANT_ALREADY_SUSPENDED(HttpStatus.CONFLICT, "error.tenantAlreadySuspended", "Tenant já está suspenso."),
+    TENANT_NOT_SUSPENDED(HttpStatus.CONFLICT, "error.tenantNotSuspended", "Tenant não está suspenso."),
     APPOINTMENT_CONFLICT(HttpStatus.CONFLICT, "error.appointmentConflict", "Conflito de agendamento."),
     DUPLICATE_ENTITY(HttpStatus.CONFLICT, "error.duplicateEntity", "Registro duplicado."),
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "error.duplicateEmail", "Email já está em uso."),
@@ -54,6 +56,8 @@ public enum ApiError {
     INVALID_STATE_PROCEDURE_INACTIVE(HttpStatus.UNPROCESSABLE_ENTITY, "error.invalidStateProcedureInactive", "O procedimento está inativo."),
     INVALID_STATE_EXTEND_TRIAL_ACTIVE(HttpStatus.UNPROCESSABLE_ENTITY, "error.invalidStateExtendTrialActive", "Não é possível estender o trial de uma clínica que já possui plano ativo."),
     INVALID_STATE_EXTEND_TRIAL_CANCELED(HttpStatus.UNPROCESSABLE_ENTITY, "error.invalidStateExtendTrialCanceled", "Não é possível estender o trial de uma clínica cancelada."),
+    INVALID_TRANSITION_SUSPEND(HttpStatus.UNPROCESSABLE_ENTITY, "error.invalidTransitionSuspend", "Não é possível suspender um tenant com o status atual."),
+    INVALID_PLAN_CHANGE_CANCELED(HttpStatus.UNPROCESSABLE_ENTITY, "error.invalidPlanChangeCanceled", "Não é possível alterar o plano de um tenant cancelado."),
     SCHEDULE_VALIDATION(HttpStatus.UNPROCESSABLE_ENTITY, "error.scheduleValidation", "Horário ou agenda inválida."),
     SCHEDULE_START_BEFORE_END(HttpStatus.UNPROCESSABLE_ENTITY, "error.scheduleStartBeforeEnd", "O horário de início deve ser anterior ao horário de término."),
     SCHEDULE_LUNCH_ORDER(HttpStatus.UNPROCESSABLE_ENTITY, "error.scheduleLunchOrder", "O horário de início do almoço deve ser anterior ao horário de término."),
