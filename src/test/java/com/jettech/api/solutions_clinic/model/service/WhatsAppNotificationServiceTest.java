@@ -44,7 +44,7 @@ class WhatsAppNotificationServiceTest {
     @Test
     void shouldSendAppointmentReminderButtonsToEvolutionMessageEndpoint() {
         when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(String.class)))
-                .thenReturn(ResponseEntity.ok("{\"key\":{\"id\":\"message-123\"}}"));
+                .thenReturn(ResponseEntity.ok("{\"data\":{\"Info\":{\"ID\":\"message-123\"}},\"message\":\"success\"}"));
 
         var result = service.sendAppointmentReminderWithButtonsReturningMessageId(
                 "85999998354",

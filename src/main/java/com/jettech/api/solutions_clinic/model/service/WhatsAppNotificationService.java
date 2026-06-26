@@ -171,11 +171,19 @@ public class WhatsAppNotificationService {
 
     /**
      * Tenta extrair o ID da mensagem da resposta do Evolution API.
-     * Cobre a estrutura padrão (key.id) e variações do Evolution Go (id na raiz).
+     * Cobre a estrutura padrão (key.id) e variações do Evolution Go.
      */
     private static String extractMessageId(JsonNode root) {
         // Formato padrão Evolution V2 / Go: { "key": { "id": "..." } }
         String id = root.path("key").path("id").asText("");
+        if (!id.isBlank()) return id;
+
+        // Evolution Go /send/button: { "data": { "Info": { "ID": "..." } } }
+        id = root.path("data").path("Info").path("ID").asText("");
+        if (!id.isBlank()) return id;
+
+        // Variação sem wrapper data: { "Info": { "ID": "..." } }
+        id = root.path("Info").path("ID").asText("");
         if (!id.isBlank()) return id;
 
         // Fallback: id na raiz — algumas versões do Evolution Go
