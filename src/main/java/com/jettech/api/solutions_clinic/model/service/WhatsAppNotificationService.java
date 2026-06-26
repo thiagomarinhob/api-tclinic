@@ -12,6 +12,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
@@ -65,7 +66,7 @@ public class WhatsAppNotificationService {
                 "text", texto
         );
 
-        String url = whatsAppConfig.getApiUrl() + "/send/text";
+        String url = buildMessageUrl("sendText");
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -98,7 +99,7 @@ public class WhatsAppNotificationService {
     }
 
     /**
-     * Envia lembrete de agendamento com botões interativos via Evolution Go (/send/buttons).
+     * Envia lembrete de agendamento com botões interativos via Evolution Go.
      * O paciente vê "✅ Confirmar" e "❌ Cancelar" como botões clicáveis.
      * O id do botão clicado (CONFIRM / CANCEL) chega no webhook como buttonsResponseMessage.
      */
@@ -125,8 +126,8 @@ public class WhatsAppNotificationService {
                 "Olá, %s! Você tem consulta na %s no dia %s, às %s.",
                 nomePaciente, nomeClinica, dataConsulta, horarioConsulta);
 
-        Map<String, Object> btnConfirmar = Map.of("id", "CONFIRM", "label", "✅ Confirmar");
-        Map<String, Object> btnCancelar  = Map.of("id", "CANCEL",  "label", "❌ Cancelar");
+        Map<String, Object> btnConfirmar = Map.of("type", "reply", "id", "CONFIRM", "displayText", "✅ Confirmar");
+        Map<String, Object> btnCancelar  = Map.of("type", "reply", "id", "CANCEL",  "displayText", "❌ Cancelar");
 
         Map<String, Object> body = Map.of(
                 "number",      normalizedTo,
@@ -136,7 +137,7 @@ public class WhatsAppNotificationService {
                 "buttons",     List.of(btnConfirmar, btnCancelar)
         );
 
-        String url = whatsAppConfig.getApiUrl() + "/send/buttons";
+        String url = buildMessageUrl("sendButtons");
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -183,6 +184,13 @@ public class WhatsAppNotificationService {
 
         // Fallback adicional: { "message": { "key": { "id": "..." } } }
         return root.path("message").path("key").path("id").asText("");
+    }
+
+    private String buildMessageUrl(String endpoint) {
+        String baseUrl = whatsAppConfig.getApiUrl().replaceAll("/+$", "");
+        return UriComponentsBuilder.fromUriString(baseUrl)
+                .pathSegment("message", endpoint, whatsAppConfig.getInstanceName())
+                .toUriString();
     }
 
     /**
