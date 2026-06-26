@@ -15,6 +15,8 @@ public record UserDetailResponse(
     String firstName,
     String lastName,
     String email,
+    boolean isPlatformAdmin,
+    List<String> permissions,
     LocalDateTime createdAt,
     LocalDateTime updatedAt,
     List<TenantRoleInfo> tenantRoles
@@ -32,4 +34,3 @@ public record UserDetailResponse(
     ) {
     }
 }
-

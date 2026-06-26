@@ -35,13 +35,23 @@ public class DefaultGetUserByIdUseCase implements GetUserByIdUseCase {
                 .orElseThrow(() -> new EntityNotFoundException("Usuário", userId));
 
         List<UserTenantRole> userTenantRoles = userTenantRoleRepository.findByUser_Id(userId);
-        UUID contextClinicId = tenantContext.getRequiredClinicId();
-        boolean hasAccessToClinic = userTenantRoles.stream()
-                .anyMatch(utr -> utr.getTenant().getId().equals(contextClinicId));
-        if (!hasAccessToClinic) {
-            log.warn("Acesso negado ao usuário {} - sem role no clinicId: {}", userId, contextClinicId);
-            throw new ForbiddenException();
+        UUID contextClinicId = tenantContext.getClinicIdOrNull();
+        UUID contextUserId = tenantContext.getUserIdOrNull();
+
+        if (contextClinicId == null) {
+            if (!user.isPlatformAdmin() || contextUserId == null || !contextUserId.equals(userId)) {
+                log.warn("Acesso negado ao usuário {} - sem clinicId e sem permissão de admin platform", userId);
+                throw new ForbiddenException();
+            }
+        } else {
+            boolean hasAccessToClinic = userTenantRoles.stream()
+                    .anyMatch(utr -> utr.getTenant().getId().equals(contextClinicId));
+            if (!hasAccessToClinic) {
+                log.warn("Acesso negado ao usuário {} - sem role no clinicId: {}", userId, contextClinicId);
+                throw new ForbiddenException();
+            }
         }
+
         log.info("Usuário {} encontrado - email: {}, roles: {}", userId, user.getEmail(), userTenantRoles.size());
 
         List<UserDetailResponse.TenantRoleInfo> tenantRoles = userTenantRoles.stream()
@@ -63,10 +73,11 @@ public class DefaultGetUserByIdUseCase implements GetUserByIdUseCase {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getEmail(),
+                user.isPlatformAdmin(),
+                user.isPlatformAdmin() ? List.of("admin:tenant:manage") : List.of(),
                 user.getCreatedAt(),
                 user.getUpdatedAt(),
                 tenantRoles
         );
     }
 }
-

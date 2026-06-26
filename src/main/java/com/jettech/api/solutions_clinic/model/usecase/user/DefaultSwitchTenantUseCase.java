@@ -45,7 +45,7 @@ public class DefaultSwitchTenantUseCase implements SwitchTenantUseCase {
         }
         log.info("Switching tenant - userId: {}, targetTenantId: {}", userId, request.tenantId());
 
-        userRepository.findById(userId)
+        var user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthenticationFailedException());
 
         List<UserTenantRole> userTenantRoles = userTenantRoleRepository.findByUser_IdAndTenant_Id(userId, request.tenantId());
@@ -67,6 +67,10 @@ public class DefaultSwitchTenantUseCase implements SwitchTenantUseCase {
                 .withExpiresAt(expiresIn)
                 .withSubject(userId.toString())
                 .withClaim("clinicId", request.tenantId().toString());
+
+        if (user.isPlatformAdmin()) {
+            tokenBuilder.withClaim("permissions", List.of("admin:tenant:manage"));
+        }
 
         var token = tokenBuilder.sign(algorithm);
 
