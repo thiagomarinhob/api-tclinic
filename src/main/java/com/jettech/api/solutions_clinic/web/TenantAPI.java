@@ -3,7 +3,6 @@ package com.jettech.api.solutions_clinic.web;
 import com.jettech.api.solutions_clinic.model.usecase.subscription.CreateCheckoutSessionBody;
 import com.jettech.api.solutions_clinic.model.usecase.subscription.CreateCheckoutSessionResponse;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.ActivatePlanBody;
-import com.jettech.api.solutions_clinic.model.usecase.tenant.ExtendTrialBody;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.TenantLogoUploadUrlResponse;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.TenantResponse;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.UpdateTenantLogoBody;

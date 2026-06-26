@@ -15,9 +15,6 @@ import com.jettech.api.solutions_clinic.model.usecase.subscription.CreateCheckou
 import com.jettech.api.solutions_clinic.model.usecase.tenant.ActivatePlanBody;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.ActivatePlanRequest;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.ActivatePlanUseCase;
-import com.jettech.api.solutions_clinic.model.usecase.tenant.ExtendTrialBody;
-import com.jettech.api.solutions_clinic.model.usecase.tenant.ExtendTrialRequest;
-import com.jettech.api.solutions_clinic.model.usecase.tenant.ExtendTrialUseCase;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.StartTrialUseCase;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.UpdateTenantPlanUseCase;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.StartTrialRequest;
@@ -54,7 +51,6 @@ public class TenantController implements TenantAPI {
     private final AssociateUserToTenantUseCase associateUserToTenantUseCase;
     private final ActivatePlanUseCase activatePlanUseCase;
     private final StartTrialUseCase startTrialUseCase;
-    private final ExtendTrialUseCase extendTrialUseCase;
     private final TenantRepository tenantRepository;
     private final TenantContext tenantContext;
     private final R2StorageService r2StorageService;
