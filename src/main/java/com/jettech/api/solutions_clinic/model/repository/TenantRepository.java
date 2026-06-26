@@ -4,6 +4,7 @@ import com.jettech.api.solutions_clinic.model.entity.Tenant;
 import com.jettech.api.solutions_clinic.model.entity.TenantStatus;
 import com.jettech.api.solutions_clinic.model.entity.TypeTenant;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface TenantRepository extends JpaRepository<Tenant, UUID> {
+public interface TenantRepository extends JpaRepository<Tenant, UUID>, JpaSpecificationExecutor<Tenant> {
     
     Optional<Tenant> findByCnpj(String cnpj);
     
