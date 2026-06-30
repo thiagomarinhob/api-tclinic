@@ -5,6 +5,7 @@ import com.jettech.api.solutions_clinic.model.usecase.subscription.CreateCheckou
 import com.jettech.api.solutions_clinic.model.usecase.tenant.ActivatePlanBody;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.TenantLogoUploadUrlResponse;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.TenantResponse;
+import com.jettech.api.solutions_clinic.model.usecase.tenant.UpdateConfirmationWindowBody;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.UpdateTenantLogoBody;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.UpdateTenantPlanBody;
 import io.swagger.v3.oas.annotations.Operation;
@@ -182,5 +183,31 @@ public interface TenantAPI {
     @Operation(summary = "Salva a chave do objeto R2 do logo da clínica após upload")
     ResponseEntity<Void> updateLogo(
             @Valid @RequestBody UpdateTenantLogoBody body
+    ) throws AuthenticationFailedException;
+
+    @PatchMapping("/tenants/me/confirmation-window")
+    @Operation(
+        summary = "Atualiza a antecedência do lembrete de confirmação por WhatsApp",
+        description = "Define quantos minutos antes da consulta o lembrete de confirmação por WhatsApp é enviado (entre 60 e 2880 minutos)."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                responseCode = "204",
+                description = "Janela de confirmação atualizada com sucesso",
+                content = @Content
+            ),
+            @ApiResponse(
+                responseCode = "400",
+                description = "Valor fora dos limites permitidos (60 a 2880 minutos)",
+                content = @Content
+            ),
+            @ApiResponse(
+                responseCode = "404",
+                description = "Tenant não encontrado",
+                content = @Content
+            )
+    })
+    ResponseEntity<Void> updateConfirmationWindow(
+            @Valid @RequestBody UpdateConfirmationWindowBody body
     ) throws AuthenticationFailedException;
 }

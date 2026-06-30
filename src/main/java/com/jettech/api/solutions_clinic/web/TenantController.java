@@ -20,6 +20,9 @@ import com.jettech.api.solutions_clinic.model.usecase.tenant.UpdateTenantPlanUse
 import com.jettech.api.solutions_clinic.model.usecase.tenant.StartTrialRequest;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.TenantLogoUploadUrlResponse;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.TenantResponse;
+import com.jettech.api.solutions_clinic.model.usecase.tenant.UpdateConfirmationWindowBody;
+import com.jettech.api.solutions_clinic.model.usecase.tenant.UpdateConfirmationWindowRequest;
+import com.jettech.api.solutions_clinic.model.usecase.tenant.UpdateConfirmationWindowUseCase;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.UpdateTenantLogoBody;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.UpdateTenantPlanBody;
 import com.jettech.api.solutions_clinic.model.usecase.tenant.UpdateTenantPlanRequest;
@@ -51,6 +54,7 @@ public class TenantController implements TenantAPI {
     private final AssociateUserToTenantUseCase associateUserToTenantUseCase;
     private final ActivatePlanUseCase activatePlanUseCase;
     private final StartTrialUseCase startTrialUseCase;
+    private final UpdateConfirmationWindowUseCase updateConfirmationWindowUseCase;
     private final TenantRepository tenantRepository;
     private final TenantContext tenantContext;
     private final R2StorageService r2StorageService;
@@ -145,6 +149,18 @@ public class TenantController implements TenantAPI {
         tenant.setLogoObjectKey(body.objectKey());
         tenantRepository.save(tenant);
         log.info("Logo da clínica {} atualizado: {}", tenantId, body.objectKey());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> updateConfirmationWindow(
+            @Valid @RequestBody UpdateConfirmationWindowBody body
+    ) throws AuthenticationFailedException {
+        UUID tenantId = tenantContext.getRequiredClinicId();
+        log.info("Atualizando janela de confirmação - tenantId: {}, confirmationWindowMinutes: {}",
+                tenantId, body.confirmationWindowMinutes());
+        UpdateConfirmationWindowRequest request = new UpdateConfirmationWindowRequest(tenantId, body.confirmationWindowMinutes());
+        updateConfirmationWindowUseCase.execute(request);
         return ResponseEntity.noContent().build();
     }
 
