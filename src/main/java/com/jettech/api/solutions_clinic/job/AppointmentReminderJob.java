@@ -3,6 +3,7 @@ package com.jettech.api.solutions_clinic.job;
 import com.jettech.api.solutions_clinic.model.entity.Appointment;
 import com.jettech.api.solutions_clinic.model.entity.AppointmentStatus;
 import com.jettech.api.solutions_clinic.model.entity.Patient;
+import com.jettech.api.solutions_clinic.model.entity.Tenant;
 import com.jettech.api.solutions_clinic.model.repository.AppointmentRepository;
 import com.jettech.api.solutions_clinic.model.service.WhatsAppNotificationService;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +18,8 @@ import java.util.List;
 
 /**
  * Job que roda a cada 10 minutos e envia lembrete de WhatsApp para pacientes
- * com consulta marcada nas próximas 2 horas (janela de ±10 min para tolerar
- * variações de execução do scheduler).
+ * com consulta marcada dentro da antecedência configurada para o tenant
+ * (janela de ±10 min para tolerar variações de execução do scheduler).
  *
  * Substitui o envio que era feito no momento do agendamento.
  */
@@ -30,10 +31,7 @@ public class AppointmentReminderJob {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
-    /** Antecedência alvo do lembrete (em minutos). */
-    private static final int REMINDER_MINUTES_BEFORE = 120;
-
-    /** Metade da janela de tolerância (em minutos). O job cobre [alvo-10, alvo+10]. */
+    /** Metade da janela de tolerância (em minutos). Para cada tenant, o job cobre [alvo-10, alvo+10]. */
     private static final int WINDOW_HALF_MINUTES = 10;
 
     private final AppointmentRepository appointmentRepository;
@@ -43,23 +41,23 @@ public class AppointmentReminderJob {
     @Transactional
     public void sendReminders() {
         LocalDateTime now         = LocalDateTime.now();
-        LocalDateTime windowStart = now.plusMinutes(REMINDER_MINUTES_BEFORE - WINDOW_HALF_MINUTES);
-        LocalDateTime windowEnd   = now.plusMinutes(REMINDER_MINUTES_BEFORE + WINDOW_HALF_MINUTES);
+        LocalDateTime windowStart = now.plusMinutes(Tenant.MIN_CONFIRMATION_WINDOW_MINUTES - WINDOW_HALF_MINUTES);
+        LocalDateTime windowEnd   = now.plusMinutes(Tenant.MAX_CONFIRMATION_WINDOW_MINUTES + WINDOW_HALF_MINUTES);
 
         log.info("[AppointmentReminderJob] Job disparado - janela de busca: {} ate {}.", windowStart, windowEnd);
 
-        List<Appointment> upcoming = appointmentRepository.findAppointmentsForReminder(
+        List<Appointment> candidates = appointmentRepository.findAppointmentsForReminder(
                 windowStart, windowEnd, AppointmentStatus.AGENDADO);
 
-        if (upcoming.isEmpty()) {
+        if (candidates.isEmpty()) {
             log.info("[AppointmentReminderJob] Nenhum agendamento encontrado na janela.");
             return;
         }
 
-        log.info("Enviando lembretes para {} agendamento(s) entre {} e {}.",
-                upcoming.size(), windowStart, windowEnd);
-
-        for (Appointment appointment : upcoming) {
+        for (Appointment appointment : candidates) {
+            if (!isWithinTenantWindow(appointment, now)) {
+                continue;
+            }
             try {
                 sendWhatsAppReminder(appointment);
                 appointment.setReminderSentAt(LocalDateTime.now());
@@ -68,6 +66,17 @@ public class AppointmentReminderJob {
                 log.error("Erro ao enviar lembrete para agendamento {}: {}", appointment.getId(), e.getMessage());
             }
         }
+    }
+
+    /** Verifica se o agendamento está dentro da janela [alvo-10, alvo+10] do tenant, onde alvo = now + confirmationWindowMinutes. */
+    private boolean isWithinTenantWindow(Appointment appointment, LocalDateTime now) {
+        int tenantWindowMinutes = appointment.getTenant().getConfirmationWindowMinutes();
+        LocalDateTime target = now.plusMinutes(tenantWindowMinutes);
+        LocalDateTime tenantWindowStart = target.minusMinutes(WINDOW_HALF_MINUTES);
+        LocalDateTime tenantWindowEnd   = target.plusMinutes(WINDOW_HALF_MINUTES);
+
+        return !appointment.getScheduledAt().isBefore(tenantWindowStart)
+                && !appointment.getScheduledAt().isAfter(tenantWindowEnd);
     }
 
     private void sendWhatsAppReminder(Appointment appointment) {
