@@ -155,7 +155,7 @@ public class TenantController implements TenantAPI {
                 t.getId(), t.getName(), t.getCnpj(), t.getPlanType(),
                 t.getAddress(), t.getPhone(), t.isActive(), t.getSubdomain(),
                 t.getType(), t.getStatus(), t.getTrialEndsAt(), t.getLogoObjectKey(),
-                t.getCreatedAt(), t.getUpdatedAt()
+                t.getConfirmationWindowMinutes(), t.getCreatedAt(), t.getUpdatedAt()
         );
     }
 

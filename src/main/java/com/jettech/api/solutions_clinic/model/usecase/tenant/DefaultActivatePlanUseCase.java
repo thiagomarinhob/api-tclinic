@@ -94,6 +94,7 @@ public class DefaultActivatePlanUseCase implements ActivatePlanUseCase {
                 tenant.getStatus(),
                 tenant.getTrialEndsAt(),
                 tenant.getLogoObjectKey(),
+                tenant.getConfirmationWindowMinutes(),
                 tenant.getCreatedAt(),
                 tenant.getUpdatedAt()
         );

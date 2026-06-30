@@ -18,6 +18,10 @@ import java.util.UUID;
 @Entity(name = "tenant")
 public class Tenant {
 
+    /** Limites válidos para {@link #confirmationWindowMinutes} (usado também na validação do endpoint de atualização e no job de lembrete). */
+    public static final int MIN_CONFIRMATION_WINDOW_MINUTES = 60;
+    public static final int MAX_CONFIRMATION_WINDOW_MINUTES = 2880;
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -55,6 +59,11 @@ public class Tenant {
     /** Chave do objeto R2 com o logo da clínica (ex: tenants/{id}/logo/logo.png). */
     @Column(name = "logo_object_key", length = 512)
     private String logoObjectKey;
+
+    /** Antecedência (em minutos) com que o lembrete de confirmação por WhatsApp é enviado antes da consulta. */
+    @Column(name = "confirmation_window_minutes", nullable = false)
+    @ColumnDefault("120")
+    private Integer confirmationWindowMinutes = 120;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

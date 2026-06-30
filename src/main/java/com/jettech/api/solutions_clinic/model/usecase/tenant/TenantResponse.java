@@ -21,6 +21,7 @@ public record TenantResponse(
     TenantStatus status,
     LocalDate trialEndsAt,
     String logoObjectKey,
+    Integer confirmationWindowMinutes,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {

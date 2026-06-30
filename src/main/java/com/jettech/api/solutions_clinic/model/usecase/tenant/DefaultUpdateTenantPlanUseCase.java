@@ -61,6 +61,7 @@ public class DefaultUpdateTenantPlanUseCase implements UpdateTenantPlanUseCase {
                 tenant.getStatus(),
                 tenant.getTrialEndsAt(),
                 tenant.getLogoObjectKey(),
+                tenant.getConfirmationWindowMinutes(),
                 tenant.getCreatedAt(),
                 tenant.getUpdatedAt()
         );
