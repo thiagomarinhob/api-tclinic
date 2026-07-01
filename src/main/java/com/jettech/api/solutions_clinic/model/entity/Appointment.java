@@ -75,6 +75,11 @@ public class Appointment {
     @Column(name = "whatsapp_message_id", length = 255)
     private String whatsappMessageId;
 
+    /** Código curto (ex.: "C843") gerado no envio do lembrete; usado para desambiguar
+      * quando o telefone do paciente bate com mais de um agendamento ativo. */
+    @Column(name = "confirmation_code", length = 10)
+    private String confirmationCode;
+
     @Column(name = "started_at")
     private LocalDateTime startedAt;
 
