@@ -130,7 +130,7 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
             Optional<String> intentOpt = parseIntent(rawText);
 
             if (intentOpt.isEmpty()) {
-                log.debug("[WhatsApp] Webhook ignorado — texto '{}' sem palavra-chave reconhecida (remoteJid={})",
+                log.info("[WhatsApp] Webhook ignorado — texto '{}' sem palavra-chave reconhecida (remoteJid={})",
                         rawText, maskJid(remoteJid));
                 return;
             }
