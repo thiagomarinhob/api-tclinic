@@ -105,7 +105,8 @@ class WhatsAppNotificationServiceTest {
                 "TClinic",
                 "26/06/2026",
                 "11:00",
-                "(85) 3333-4444"
+                "(85) 3333-4444",
+                "C843"
         );
 
         assertThat(result).contains("message-456");
@@ -125,6 +126,7 @@ class WhatsAppNotificationServiceTest {
         assertThat(request.getBody())
                 .containsEntry("number", "5585999998354");
         assertThat(request.getBody().get("text").toString())
+                .contains("Código da confirmação: C843")
                 .contains("Responda *1* para Confirmar")
                 .contains("Responda *2* para Cancelar");
     }

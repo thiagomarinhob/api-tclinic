@@ -42,7 +42,8 @@ public class WhatsAppNotificationService {
             String nomeClinica,
             String dataConsulta,
             String horarioConsulta,
-            String telefoneContato) {
+            String telefoneContato,
+            String confirmationCode) {
 
         if (!whatsAppConfig.isConfigured()) {
             log.warn("Evolution API não configurada; lembrete não enviado para {}", maskPhone(to));
@@ -56,10 +57,11 @@ public class WhatsAppNotificationService {
         }
 
         String texto = String.format(
-                "Olá, %s! Você tem consulta na %s no dia %s, às %s. Dúvidas: %s.%n%n"
+                "Olá, %s! Você tem consulta na %s no dia %s, às %s. Dúvidas: %s.%n"
+                + "Código da confirmação: %s%n%n"
                 + "Responda *1* para Confirmar ✅%n"
                 + "Responda *2* para Cancelar ❌",
-                nomePaciente, nomeClinica, dataConsulta, horarioConsulta, telefoneContato);
+                nomePaciente, nomeClinica, dataConsulta, horarioConsulta, telefoneContato, confirmationCode);
 
         Map<String, Object> body = Map.of(
                 "number", normalizedTo,

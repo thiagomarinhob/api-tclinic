@@ -50,7 +50,7 @@ class AppointmentReminderJobTest {
     }
 
     private void stubWhatsAppSendSuccess() {
-        when(whatsAppNotificationService.sendAppointmentReminderWithButtonsReturningMessageId(
+        when(whatsAppNotificationService.sendAppointmentReminderReturningMessageId(
                 any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(Optional.of("wamid.test"));
     }
@@ -90,7 +90,7 @@ class AppointmentReminderJobTest {
 
         job.sendReminders();
 
-        verify(whatsAppNotificationService).sendAppointmentReminderWithButtonsReturningMessageId(
+        verify(whatsAppNotificationService).sendAppointmentReminderReturningMessageId(
                 eq("11999999999"), any(), any(), any(), any(), any(), any());
         verify(appointmentRepository).save(appointment);
         assertThat(appointment.getReminderSentAt()).isNotNull();
@@ -126,7 +126,7 @@ class AppointmentReminderJobTest {
 
         job.sendReminders();
 
-        verify(whatsAppNotificationService, never()).sendAppointmentReminderWithButtonsReturningMessageId(
+        verify(whatsAppNotificationService, never()).sendAppointmentReminderReturningMessageId(
                 any(), any(), any(), any(), any(), any(), any());
         verify(appointmentRepository, never()).save(any());
         assertThat(appointment.getReminderSentAt()).isNull();
@@ -213,7 +213,7 @@ class AppointmentReminderJobTest {
         assertThat(appointment.getConfirmationCode()).isNotNull();
         assertThat(appointment.getConfirmationCode()).matches("C\\d{3}");
 
-        verify(whatsAppNotificationService).sendAppointmentReminderWithButtonsReturningMessageId(
+        verify(whatsAppNotificationService).sendAppointmentReminderReturningMessageId(
                 eq("11999999999"), any(), any(), any(), any(), any(), eq(appointment.getConfirmationCode()));
     }
 
@@ -247,7 +247,7 @@ class AppointmentReminderJobTest {
         job.sendReminders();
 
         assertThat(appointment.getConfirmationCode()).isNull();
-        verify(whatsAppNotificationService, never()).sendAppointmentReminderWithButtonsReturningMessageId(
+        verify(whatsAppNotificationService, never()).sendAppointmentReminderReturningMessageId(
                 any(), any(), any(), any(), any(), any(), any());
     }
 }
