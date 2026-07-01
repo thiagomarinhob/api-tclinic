@@ -167,4 +167,10 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
             List<UUID> patientIds,
             List<AppointmentStatus> statuses
     );
+
+    /** Usado ao gerar um novo código de confirmação, para evitar colisão entre agendamentos ativos. */
+    boolean existsByConfirmationCodeAndStatusIn(String confirmationCode, List<AppointmentStatus> statuses);
+
+    /** Todos os agendamentos ativos do(s) paciente(s) — usado para resolver ambiguidade via código quando há mais de um candidato. */
+    List<Appointment> findByPatientIdInAndStatusIn(List<UUID> patientIds, List<AppointmentStatus> statuses);
 }
