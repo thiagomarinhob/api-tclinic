@@ -16,6 +16,8 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Job que roda a cada 10 minutos e envia lembrete de WhatsApp para pacientes
@@ -34,6 +36,10 @@ public class AppointmentReminderJob {
 
     /** Metade da janela de tolerância (em minutos). Para cada tenant, o job cobre [alvo-10, alvo+10]. */
     private static final int WINDOW_HALF_MINUTES = 10;
+
+    private static final List<AppointmentStatus> ACTIVE_STATUSES =
+            List.of(AppointmentStatus.AGENDADO, AppointmentStatus.CONFIRMADO);
+    private static final int MAX_CODE_GENERATION_ATTEMPTS = 20;
 
     private final AppointmentRepository appointmentRepository;
     private final WhatsAppNotificationService whatsAppNotificationService;
@@ -100,18 +106,43 @@ public class AppointmentReminderJob {
         String horarioConsulta = appointment.getScheduledAt().format(TIME_FMT);
         String telefoneContato = tenant.getPhone() != null ? tenant.getPhone() : "";
 
+        Optional<String> confirmationCodeOpt = generateUniqueConfirmationCode();
+        if (confirmationCodeOpt.isEmpty()) {
+            log.error("[WhatsApp] Não foi possível gerar código de confirmação livre — agendamento={} paciente={}.",
+                    appointment.getId(), patient.getId());
+            return;
+        }
+        String confirmationCode = confirmationCodeOpt.get();
+
         var messageIdOpt = whatsAppNotificationService.sendAppointmentReminderWithButtonsReturningMessageId(
-                patient.getWhatsapp(), nomePaciente, nomeClinica, dataConsulta, horarioConsulta, telefoneContato);
+                patient.getWhatsapp(), nomePaciente, nomeClinica, dataConsulta, horarioConsulta, telefoneContato,
+                confirmationCode);
+
+        appointment.setConfirmationCode(confirmationCode);
 
         messageIdOpt.ifPresent(id -> {
             appointment.setWhatsappMessageId(id);
-            log.info("[WhatsApp] Lembrete enviado — agendamento={} paciente={} wamid={}",
-                    appointment.getId(), patient.getId(), id);
+            log.info("[WhatsApp] Lembrete enviado — agendamento={} paciente={} wamid={} código={}",
+                    appointment.getId(), patient.getId(), id, confirmationCode);
         });
 
         if (messageIdOpt.isEmpty()) {
             log.warn("[WhatsApp] Lembrete NÃO enviado — agendamento={} paciente={}.",
                     appointment.getId(), patient.getId());
         }
+    }
+
+    /**
+     * Gera um código no formato "C"+3 dígitos, único entre agendamentos ativos que já têm código atribuído.
+     * Retorna vazio se não conseguir um valor livre dentro do limite de tentativas (extremamente improvável).
+     */
+    private Optional<String> generateUniqueConfirmationCode() {
+        for (int attempts = 0; attempts < MAX_CODE_GENERATION_ATTEMPTS; attempts++) {
+            String code = "C" + String.format("%03d", ThreadLocalRandom.current().nextInt(1000));
+            if (!appointmentRepository.existsByConfirmationCodeAndStatusIn(code, ACTIVE_STATUSES)) {
+                return Optional.of(code);
+            }
+        }
+        return Optional.empty();
     }
 }

@@ -52,7 +52,8 @@ class WhatsAppNotificationServiceTest {
                 "TClinic",
                 "26/06/2026",
                 "11:00",
-                "(85) 3333-4444"
+                "(85) 3333-4444",
+                "C843"
         );
 
         assertThat(result).contains("message-123");
@@ -74,6 +75,8 @@ class WhatsAppNotificationServiceTest {
                 .containsEntry("title", "📅 Confirmação de Consulta")
                 .containsEntry("footerText", "Dúvidas? (85) 3333-4444")
                 .containsEntry("buttonText", "Responder");
+        assertThat(request.getBody().get("description").toString())
+                .contains("Código da confirmação: C843");
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> sections = (List<Map<String, Object>>) request.getBody().get("sections");

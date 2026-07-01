@@ -24,6 +24,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -49,7 +51,7 @@ class AppointmentReminderJobTest {
 
     private void stubWhatsAppSendSuccess() {
         when(whatsAppNotificationService.sendAppointmentReminderWithButtonsReturningMessageId(
-                any(), any(), any(), any(), any(), any()))
+                any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(Optional.of("wamid.test"));
     }
 
@@ -89,7 +91,7 @@ class AppointmentReminderJobTest {
         job.sendReminders();
 
         verify(whatsAppNotificationService).sendAppointmentReminderWithButtonsReturningMessageId(
-                eq("11999999999"), any(), any(), any(), any(), any());
+                eq("11999999999"), any(), any(), any(), any(), any(), any());
         verify(appointmentRepository).save(appointment);
         assertThat(appointment.getReminderSentAt()).isNotNull();
     }
@@ -125,7 +127,7 @@ class AppointmentReminderJobTest {
         job.sendReminders();
 
         verify(whatsAppNotificationService, never()).sendAppointmentReminderWithButtonsReturningMessageId(
-                any(), any(), any(), any(), any(), any());
+                any(), any(), any(), any(), any(), any(), any());
         verify(appointmentRepository, never()).save(any());
         assertThat(appointment.getReminderSentAt()).isNull();
     }
@@ -193,5 +195,59 @@ class AppointmentReminderJobTest {
                 .isEqualTo(NOW.plusMinutes(Tenant.MIN_CONFIRMATION_WINDOW_MINUTES - 10));
         assertThat(endCaptor.getValue())
                 .isEqualTo(NOW.plusMinutes(Tenant.MAX_CONFIRMATION_WINDOW_MINUTES + 10));
+    }
+
+    @Test
+    void whenReminderIsSentSuccessfully_thenConfirmationCodeIsGeneratedAndPersisted() {
+        stubWhatsAppSendSuccess();
+        Tenant tenant = tenantWithWindow(120);
+        Appointment appointment = appointmentAt(tenant, NOW.plusMinutes(120));
+
+        when(appointmentRepository.findAppointmentsForReminder(any(), any(), eq(AppointmentStatus.AGENDADO)))
+                .thenReturn(List.of(appointment));
+        when(appointmentRepository.existsByConfirmationCodeAndStatusIn(anyString(), anyList()))
+                .thenReturn(false);
+
+        job.sendReminders();
+
+        assertThat(appointment.getConfirmationCode()).isNotNull();
+        assertThat(appointment.getConfirmationCode()).matches("C\\d{3}");
+
+        verify(whatsAppNotificationService).sendAppointmentReminderWithButtonsReturningMessageId(
+                eq("11999999999"), any(), any(), any(), any(), any(), eq(appointment.getConfirmationCode()));
+    }
+
+    @Test
+    void whenGeneratedCodeCollidesWithAnActiveAppointment_thenRetriesUntilCodeIsFree() {
+        stubWhatsAppSendSuccess();
+        Tenant tenant = tenantWithWindow(120);
+        Appointment appointment = appointmentAt(tenant, NOW.plusMinutes(120));
+
+        when(appointmentRepository.findAppointmentsForReminder(any(), any(), eq(AppointmentStatus.AGENDADO)))
+                .thenReturn(List.of(appointment));
+        when(appointmentRepository.existsByConfirmationCodeAndStatusIn(anyString(), anyList()))
+                .thenReturn(true, false);
+
+        job.sendReminders();
+
+        assertThat(appointment.getConfirmationCode()).isNotNull();
+        verify(appointmentRepository, times(2)).existsByConfirmationCodeAndStatusIn(anyString(), anyList());
+    }
+
+    @Test
+    void whenCodeGenerationAttemptsAreExhausted_thenReminderIsNotSent() {
+        Tenant tenant = tenantWithWindow(120);
+        Appointment appointment = appointmentAt(tenant, NOW.plusMinutes(120));
+
+        when(appointmentRepository.findAppointmentsForReminder(any(), any(), eq(AppointmentStatus.AGENDADO)))
+                .thenReturn(List.of(appointment));
+        when(appointmentRepository.existsByConfirmationCodeAndStatusIn(anyString(), anyList()))
+                .thenReturn(true);
+
+        job.sendReminders();
+
+        assertThat(appointment.getConfirmationCode()).isNull();
+        verify(whatsAppNotificationService, never()).sendAppointmentReminderWithButtonsReturningMessageId(
+                any(), any(), any(), any(), any(), any(), any());
     }
 }
