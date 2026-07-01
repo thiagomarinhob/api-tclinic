@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -36,11 +37,12 @@ public class AppointmentReminderJob {
 
     private final AppointmentRepository appointmentRepository;
     private final WhatsAppNotificationService whatsAppNotificationService;
+    private final Clock clock;
 
     @Scheduled(cron = "0 */10 * * * *") // a cada 10 minutos
     @Transactional
     public void sendReminders() {
-        LocalDateTime now         = LocalDateTime.now();
+        LocalDateTime now         = LocalDateTime.now(clock);
         LocalDateTime windowStart = now.plusMinutes(Tenant.MIN_CONFIRMATION_WINDOW_MINUTES - WINDOW_HALF_MINUTES);
         LocalDateTime windowEnd   = now.plusMinutes(Tenant.MAX_CONFIRMATION_WINDOW_MINUTES + WINDOW_HALF_MINUTES);
 
@@ -60,7 +62,7 @@ public class AppointmentReminderJob {
             }
             try {
                 sendWhatsAppReminder(appointment);
-                appointment.setReminderSentAt(LocalDateTime.now());
+                appointment.setReminderSentAt(LocalDateTime.now(clock));
                 appointmentRepository.save(appointment);
             } catch (Exception e) {
                 log.error("Erro ao enviar lembrete para agendamento {}: {}", appointment.getId(), e.getMessage());

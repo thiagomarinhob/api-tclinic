@@ -14,7 +14,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,6 +33,10 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AppointmentReminderJobTest {
 
+    private static final ZoneId ZONE = ZoneId.systemDefault();
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 6, 30, 10, 0, 0);
+    private static final Clock FIXED_CLOCK = Clock.fixed(NOW.atZone(ZONE).toInstant(), ZONE);
+
     @Mock AppointmentRepository appointmentRepository;
     @Mock WhatsAppNotificationService whatsAppNotificationService;
 
@@ -37,7 +44,7 @@ class AppointmentReminderJobTest {
 
     @BeforeEach
     void setUp() {
-        job = new AppointmentReminderJob(appointmentRepository, whatsAppNotificationService);
+        job = new AppointmentReminderJob(appointmentRepository, whatsAppNotificationService, FIXED_CLOCK);
     }
 
     private void stubWhatsAppSendSuccess() {
@@ -73,9 +80,8 @@ class AppointmentReminderJobTest {
     @Test
     void whenAppointmentIsWithinTenantOwnWindow_thenReminderIsSent() {
         stubWhatsAppSendSuccess();
-        LocalDateTime now = LocalDateTime.now();
         Tenant tenantA = tenantWithWindow(120);
-        Appointment appointment = appointmentAt(tenantA, now.plusMinutes(120));
+        Appointment appointment = appointmentAt(tenantA, NOW.plusMinutes(120));
 
         when(appointmentRepository.findAppointmentsForReminder(any(), any(), eq(AppointmentStatus.AGENDADO)))
                 .thenReturn(List.of(appointment));
@@ -91,11 +97,10 @@ class AppointmentReminderJobTest {
     @Test
     void whenTwoTenantsHaveDifferentWindowsInSameRun_thenEachIsEvaluatedAgainstItsOwnWindow() {
         stubWhatsAppSendSuccess();
-        LocalDateTime now = LocalDateTime.now();
         Tenant tenantA = tenantWithWindow(120);
         Tenant tenantB = tenantWithWindow(60);
-        Appointment appointmentA = appointmentAt(tenantA, now.plusMinutes(120));
-        Appointment appointmentB = appointmentAt(tenantB, now.plusMinutes(60));
+        Appointment appointmentA = appointmentAt(tenantA, NOW.plusMinutes(120));
+        Appointment appointmentB = appointmentAt(tenantB, NOW.plusMinutes(60));
 
         when(appointmentRepository.findAppointmentsForReminder(any(), any(), eq(AppointmentStatus.AGENDADO)))
                 .thenReturn(List.of(appointmentA, appointmentB));
@@ -110,10 +115,9 @@ class AppointmentReminderJobTest {
 
     @Test
     void whenAppointmentIsOutsideTenantOwnWindow_thenReminderIsNotSentThisCycle() {
-        LocalDateTime now = LocalDateTime.now();
         Tenant tenantB = tenantWithWindow(60);
         // Tenant B's window target is 60min; this appointment is at 120min (tenant A's window), not tenant B's.
-        Appointment appointment = appointmentAt(tenantB, now.plusMinutes(120));
+        Appointment appointment = appointmentAt(tenantB, NOW.plusMinutes(120));
 
         when(appointmentRepository.findAppointmentsForReminder(any(), any(), eq(AppointmentStatus.AGENDADO)))
                 .thenReturn(List.of(appointment));
@@ -122,6 +126,53 @@ class AppointmentReminderJobTest {
 
         verify(whatsAppNotificationService, never()).sendAppointmentReminderWithButtonsReturningMessageId(
                 any(), any(), any(), any(), any(), any());
+        verify(appointmentRepository, never()).save(any());
+        assertThat(appointment.getReminderSentAt()).isNull();
+    }
+
+    @Test
+    void whenAppointmentIsExactlyAtLowerToleranceBoundary_thenReminderIsSent() {
+        stubWhatsAppSendSuccess();
+        Tenant tenant = tenantWithWindow(120);
+        // target = NOW + 120min; lower tolerance boundary = target - 10min (inclusive).
+        Appointment appointment = appointmentAt(tenant, NOW.plusMinutes(120).minusMinutes(10));
+
+        when(appointmentRepository.findAppointmentsForReminder(any(), any(), eq(AppointmentStatus.AGENDADO)))
+                .thenReturn(List.of(appointment));
+
+        job.sendReminders();
+
+        verify(appointmentRepository).save(appointment);
+        assertThat(appointment.getReminderSentAt()).isNotNull();
+    }
+
+    @Test
+    void whenAppointmentIsExactlyAtUpperToleranceBoundary_thenReminderIsSent() {
+        stubWhatsAppSendSuccess();
+        Tenant tenant = tenantWithWindow(120);
+        // target = NOW + 120min; upper tolerance boundary = target + 10min (inclusive).
+        Appointment appointment = appointmentAt(tenant, NOW.plusMinutes(120).plusMinutes(10));
+
+        when(appointmentRepository.findAppointmentsForReminder(any(), any(), eq(AppointmentStatus.AGENDADO)))
+                .thenReturn(List.of(appointment));
+
+        job.sendReminders();
+
+        verify(appointmentRepository).save(appointment);
+        assertThat(appointment.getReminderSentAt()).isNotNull();
+    }
+
+    @Test
+    void whenAppointmentIsJustOutsideToleranceBoundary_thenReminderIsNotSent() {
+        Tenant tenant = tenantWithWindow(120);
+        // target = NOW + 120min; 1min past the upper tolerance boundary (target + 10min).
+        Appointment appointment = appointmentAt(tenant, NOW.plusMinutes(120).plusMinutes(11));
+
+        when(appointmentRepository.findAppointmentsForReminder(any(), any(), eq(AppointmentStatus.AGENDADO)))
+                .thenReturn(List.of(appointment));
+
+        job.sendReminders();
+
         verify(appointmentRepository, never()).save(any());
         assertThat(appointment.getReminderSentAt()).isNull();
     }
@@ -138,10 +189,9 @@ class AppointmentReminderJobTest {
         verify(appointmentRepository, times(1)).findAppointmentsForReminder(
                 startCaptor.capture(), endCaptor.capture(), eq(AppointmentStatus.AGENDADO));
 
-        LocalDateTime start = startCaptor.getValue();
-        LocalDateTime end = endCaptor.getValue();
-
-        assertThat(start).isBeforeOrEqualTo(LocalDateTime.now().plusMinutes(Tenant.MIN_CONFIRMATION_WINDOW_MINUTES - 9));
-        assertThat(end).isAfterOrEqualTo(LocalDateTime.now().plusMinutes(Tenant.MAX_CONFIRMATION_WINDOW_MINUTES + 9));
+        assertThat(startCaptor.getValue())
+                .isEqualTo(NOW.plusMinutes(Tenant.MIN_CONFIRMATION_WINDOW_MINUTES - 10));
+        assertThat(endCaptor.getValue())
+                .isEqualTo(NOW.plusMinutes(Tenant.MAX_CONFIRMATION_WINDOW_MINUTES + 10));
     }
 }
