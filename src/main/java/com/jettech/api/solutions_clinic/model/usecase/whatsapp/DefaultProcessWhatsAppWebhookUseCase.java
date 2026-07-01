@@ -29,9 +29,12 @@ import java.util.regex.Pattern;
  * Payload esperado para resposta em texto:
  *   event = "Message"
  *   data.Info.Type = "text"
- *   data.Message.conversation = "1"/"sim"/"confirmar"/... (confirmar) | "2"/"cancelar"/"não"/... (cancelar),
+ *   data.Message.conversation (texto simples) ou data.Message.extendedTextMessage.text (reply/preview de link)
+ *     = "1"/"sim"/"confirmar"/... (confirmar) | "2"/"cancelar"/"não"/... (cancelar),
  *     opcionalmente combinado com um código de confirmação (ex.: "Confirmar C843")
- *   data.Info.MsgMetaInfo.TargetID = ID da mensagem original (quando é reply)
+ *   data.quoted.stanzaID (ou Message.extendedTextMessage.contextInfo.stanzaID) = ID da mensagem
+ *     original, quando é reply/swipe. Info.MsgMetaInfo.TargetID NÃO serve para isso — é usado
+ *     pelo whatsmeow para edição de mensagem.
  *   data.Info.Sender = "5511999999999@s.whatsapp.net"
  *   data.Info.IsFromMe = false
  *
@@ -39,7 +42,7 @@ import java.util.regex.Pattern;
  *   event = "Message"
  *   data.Info.Type = "listResponse"
  *   data.Message.listResponseMessage.singleSelectReply.selectedRowId = "CONFIRM" | "CANCEL"
- *   data.Info.MsgMetaInfo.TargetID = ID da mensagem original
+ *   data.quoted.stanzaID (ou Message.listResponseMessage.contextInfo.stanzaID) = ID da mensagem original
  *   data.Info.Sender = "5511999999999@s.whatsapp.net"
  *   data.Info.IsFromMe = false
  *
@@ -102,7 +105,7 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
 
             String messageType = info.path("Type").asText("");
             String remoteJid   = info.path("Sender").asText("").trim();
-            String stanzaId    = info.path("MsgMetaInfo").path("TargetID").asText("").trim();
+            String stanzaId    = extractQuotedStanzaId(data);
 
             if ("buttonsResponse".equalsIgnoreCase(messageType)) {
                 String buttonId = data.path("Message").path("buttonsResponseMessage")
@@ -126,7 +129,7 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
                 return;
             }
 
-            String rawText = data.path("Message").path("conversation").asText("").trim();
+            String rawText = extractRawText(data.path("Message"));
             Optional<String> intentOpt = parseIntent(rawText);
 
             if (intentOpt.isEmpty()) {
@@ -195,6 +198,40 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
             return;
         }
         resolve(intent, Optional.empty(), stanzaId, remoteJid);
+    }
+
+    /**
+     * Extrai o texto de uma mensagem "text". Mensagens simples chegam em Message.conversation;
+     * respostas com reply/citação ou preview de link chegam em Message.extendedTextMessage.text.
+     */
+    private static String extractRawText(JsonNode message) {
+        String text = message.path("conversation").asText("").trim();
+        if (!text.isBlank()) return text;
+
+        return message.path("extendedTextMessage").path("text").asText("").trim();
+    }
+
+    /**
+     * Extrai o stanzaId da mensagem citada (reply/swipe). Info.MsgMetaInfo.TargetID é usado pelo
+     * whatsmeow para edição de mensagem, não para reply — por isso NÃO indica a mensagem original
+     * de um reply. O stanzaId real de um reply vem do contextInfo da mensagem (ou do atalho
+     * data.quoted, quando presente).
+     */
+    private static String extractQuotedStanzaId(JsonNode data) {
+        String stanzaId = data.path("quoted").path("stanzaID").asText("").trim();
+        if (!stanzaId.isBlank()) return stanzaId;
+
+        JsonNode message = data.path("Message");
+        stanzaId = message.path("extendedTextMessage").path("contextInfo").path("stanzaID").asText("").trim();
+        if (!stanzaId.isBlank()) return stanzaId;
+
+        stanzaId = message.path("buttonsResponseMessage").path("contextInfo").path("stanzaID").asText("").trim();
+        if (!stanzaId.isBlank()) return stanzaId;
+
+        stanzaId = message.path("listResponseMessage").path("contextInfo").path("stanzaID").asText("").trim();
+        if (!stanzaId.isBlank()) return stanzaId;
+
+        return data.path("Info").path("MsgMetaInfo").path("TargetID").asText("").trim();
     }
 
     private static String extractSelectedRowId(JsonNode message) {

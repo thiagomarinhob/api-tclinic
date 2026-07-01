@@ -91,6 +91,33 @@ class DefaultProcessWhatsAppWebhookUseCaseTest {
                 """.formatted(SENDER, stanzaId, text);
     }
 
+    private static String extendedTextBody(String text, String stanzaId) {
+        return """
+                {
+                  "event": "Message",
+                  "data": {
+                    "Info": {"Type": "text", "Sender": "%s", "IsFromMe": false, "MsgMetaInfo": {"TargetID": "%s"}},
+                    "Message": {"extendedTextMessage": {"text": "%s"}}
+                  }
+                }
+                """.formatted(SENDER, stanzaId, text);
+    }
+
+    // Reproduz o payload real da Evolution Go para um reply/swipe: Info.MsgMetaInfo.TargetID vem
+    // vazio (é usado para edição, não para reply); o stanzaId real vem em data.quoted.stanzaID.
+    private static String quotedReplyBody(String text, String quotedStanzaId) {
+        return """
+                {
+                  "event": "Message",
+                  "data": {
+                    "Info": {"Type": "text", "Sender": "%s", "IsFromMe": false, "MsgMetaInfo": {"TargetID": ""}},
+                    "Message": {"extendedTextMessage": {"text": "%s"}},
+                    "quoted": {"stanzaID": "%s"}
+                  }
+                }
+                """.formatted(SENDER, text, quotedStanzaId);
+    }
+
     private static String buttonBody(String buttonId, String stanzaId) {
         return """
                 {
@@ -116,6 +143,21 @@ class DefaultProcessWhatsAppWebhookUseCaseTest {
         verify(patientRepository, never()).findByWhatsappNormalized(any(), any());
     }
 
+    // Payload real Evolution Go: reply/swipe com Info.MsgMetaInfo.TargetID vazio, mas
+    // data.quoted.stanzaID presente -> deve resolver direto por stanzaId, sem cair no fallback
+    // por telefone (que seria ambíguo com múltiplos agendamentos ativos).
+    @Test
+    void whenTargetIdIsEmptyButQuotedStanzaIdIsPresent_thenAppliesDirectlyWithoutPhoneFallback() {
+        Appointment appointment = appointmentWith(AppointmentStatus.AGENDADO, "C331");
+        when(appointmentRepository.findByWhatsappMessageId("3EB06FC647DA1AC3D0F602")).thenReturn(Optional.of(appointment));
+
+        execute(quotedReplyBody("1", "3EB06FC647DA1AC3D0F602"));
+
+        assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.CONFIRMADO);
+        verify(notificationCreator).createAppointmentConfirmation(appointment);
+        verify(patientRepository, never()).findByWhatsappNormalized(any(), any());
+    }
+
     // WACONF-05: sem stanzaId, 1 candidato por telefone -> aplica direto sem exigir código.
     @Test
     void whenNoStanzaIdAndExactlyOneCandidateByPhone_thenAppliesWithoutRequiringCode() {
@@ -127,6 +169,28 @@ class DefaultProcessWhatsAppWebhookUseCaseTest {
 
         assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.CONFIRMADO);
         verify(notificationCreator).createAppointmentConfirmation(appointment);
+    }
+
+    // Reply/preview de link chega em Message.extendedTextMessage.text em vez de Message.conversation.
+    @Test
+    void whenTextArrivesAsExtendedTextMessage_thenIsStillRecognized() {
+        Appointment appointment = appointmentWith(AppointmentStatus.AGENDADO, "C331");
+        stubSinglePatientMatch(appointment.getPatient().getId());
+        when(appointmentRepository.findByPatientIdInAndStatusIn(any(), any())).thenReturn(List.of(appointment));
+
+        execute(extendedTextBody("confirmar C331", ""));
+
+        assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.CONFIRMADO);
+        verify(notificationCreator).createAppointmentConfirmation(appointment);
+    }
+
+    // Texto contendo só o código (sem palavra-chave confirmar/cancelar) continua sendo ignorado.
+    @Test
+    void whenTextIsOnlyTheConfirmationCode_thenWebhookIsIgnored() {
+        execute(extendedTextBody("C331", ""));
+
+        verify(patientRepository, never()).findByWhatsappNormalized(any(), any());
+        verify(appointmentRepository, never()).save(any());
     }
 
     // WACONF-06 / WACONF-08 / WACONF-12: 2+ candidatos (inclusive de tenants diferentes) + código correspondente -> só o certo muda.
