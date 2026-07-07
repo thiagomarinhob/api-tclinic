@@ -43,7 +43,8 @@ public class WhatsAppNotificationService {
             String dataConsulta,
             String horarioConsulta,
             String telefoneContato,
-            String confirmationCode) {
+            String confirmationCode,
+            boolean includeConfirmationCode) {
 
         if (!whatsAppConfig.isConfigured()) {
             log.warn("Evolution API não configurada; lembrete não enviado para {}", maskPhone(to));
@@ -56,12 +57,21 @@ public class WhatsAppNotificationService {
             return Optional.empty();
         }
 
-        String texto = String.format(
-                "Olá, %s! Você tem consulta na %s no dia %s, às %s. Dúvidas: %s.%n"
-                + "Código da confirmação: %s%n%n"
-                + "Responda *1* para Confirmar ✅%n"
-                + "Responda *2* para Cancelar ❌",
-                nomePaciente, nomeClinica, dataConsulta, horarioConsulta, telefoneContato, confirmationCode);
+        // O código só aparece quando o paciente tem mais de uma consulta ativa — é a única situação em
+        // que o webhook precisa dele para desambiguar; incluí-lo sempre só confundia quem tem 1 consulta.
+        String texto = includeConfirmationCode
+                ? String.format(
+                        "Olá, %s! Você tem consulta na %s no dia %s, às %s. Dúvidas: %s.%n"
+                        + "Código desta consulta: %s%n%n"
+                        + "Para confirmar, digite *1 %s*%n"
+                        + "Para cancelar, digite *2 %s*",
+                        nomePaciente, nomeClinica, dataConsulta, horarioConsulta, telefoneContato,
+                        confirmationCode, confirmationCode, confirmationCode)
+                : String.format(
+                        "Olá, %s! Você tem consulta na %s no dia %s, às %s. Dúvidas: %s.%n%n"
+                        + "Para confirmar, digite *1*%n"
+                        + "Para cancelar, digite *2*",
+                        nomePaciente, nomeClinica, dataConsulta, horarioConsulta, telefoneContato);
 
         Map<String, Object> body = Map.of(
                 "number", normalizedTo,

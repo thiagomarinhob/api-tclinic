@@ -24,6 +24,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -51,7 +52,7 @@ class AppointmentReminderJobTest {
 
     private void stubWhatsAppSendSuccess() {
         when(whatsAppNotificationService.sendAppointmentReminderReturningMessageId(
-                any(), any(), any(), any(), any(), any(), any()))
+                any(), any(), any(), any(), any(), any(), any(), anyBoolean()))
                 .thenReturn(Optional.of("wamid.test"));
     }
 
@@ -91,7 +92,7 @@ class AppointmentReminderJobTest {
         job.sendReminders();
 
         verify(whatsAppNotificationService).sendAppointmentReminderReturningMessageId(
-                eq("11999999999"), any(), any(), any(), any(), any(), any());
+                eq("11999999999"), any(), any(), any(), any(), any(), any(), anyBoolean());
         verify(appointmentRepository).save(appointment);
         assertThat(appointment.getReminderSentAt()).isNotNull();
     }
@@ -127,7 +128,7 @@ class AppointmentReminderJobTest {
         job.sendReminders();
 
         verify(whatsAppNotificationService, never()).sendAppointmentReminderReturningMessageId(
-                any(), any(), any(), any(), any(), any(), any());
+                any(), any(), any(), any(), any(), any(), any(), anyBoolean());
         verify(appointmentRepository, never()).save(any());
         assertThat(appointment.getReminderSentAt()).isNull();
     }
@@ -214,7 +215,7 @@ class AppointmentReminderJobTest {
         assertThat(appointment.getConfirmationCode()).matches("C\\d{3}");
 
         verify(whatsAppNotificationService).sendAppointmentReminderReturningMessageId(
-                eq("11999999999"), any(), any(), any(), any(), any(), eq(appointment.getConfirmationCode()));
+                eq("11999999999"), any(), any(), any(), any(), any(), eq(appointment.getConfirmationCode()), anyBoolean());
     }
 
     @Test
@@ -248,6 +249,42 @@ class AppointmentReminderJobTest {
 
         assertThat(appointment.getConfirmationCode()).isNull();
         verify(whatsAppNotificationService, never()).sendAppointmentReminderReturningMessageId(
-                any(), any(), any(), any(), any(), any(), any());
+                any(), any(), any(), any(), any(), any(), any(), anyBoolean());
+    }
+
+    // O código só deve aparecer na mensagem quando o paciente tem mais de uma consulta ativa.
+    @Test
+    void whenPatientHasMultipleActiveAppointments_thenConfirmationCodeIsIncludedInMessage() {
+        stubWhatsAppSendSuccess();
+        Tenant tenant = tenantWithWindow(120);
+        Appointment appointment = appointmentAt(tenant, NOW.plusMinutes(120));
+
+        when(appointmentRepository.findAppointmentsForReminder(any(), any(), eq(AppointmentStatus.AGENDADO)))
+                .thenReturn(List.of(appointment));
+        when(appointmentRepository.countByPatientIdAndStatusIn(eq(appointment.getPatient().getId()), anyList()))
+                .thenReturn(2L);
+
+        job.sendReminders();
+
+        verify(whatsAppNotificationService).sendAppointmentReminderReturningMessageId(
+                any(), any(), any(), any(), any(), any(), any(), eq(true));
+    }
+
+    // Paciente com uma única consulta ativa: sem código na mensagem.
+    @Test
+    void whenPatientHasOnlyOneActiveAppointment_thenConfirmationCodeIsOmittedFromMessage() {
+        stubWhatsAppSendSuccess();
+        Tenant tenant = tenantWithWindow(120);
+        Appointment appointment = appointmentAt(tenant, NOW.plusMinutes(120));
+
+        when(appointmentRepository.findAppointmentsForReminder(any(), any(), eq(AppointmentStatus.AGENDADO)))
+                .thenReturn(List.of(appointment));
+        when(appointmentRepository.countByPatientIdAndStatusIn(eq(appointment.getPatient().getId()), anyList()))
+                .thenReturn(1L);
+
+        job.sendReminders();
+
+        verify(whatsAppNotificationService).sendAppointmentReminderReturningMessageId(
+                any(), any(), any(), any(), any(), any(), any(), eq(false));
     }
 }

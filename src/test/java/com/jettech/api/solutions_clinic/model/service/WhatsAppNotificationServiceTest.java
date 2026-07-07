@@ -106,7 +106,8 @@ class WhatsAppNotificationServiceTest {
                 "26/06/2026",
                 "11:00",
                 "(85) 3333-4444",
-                "C843"
+                "C843",
+                true
         );
 
         assertThat(result).contains("message-456");
@@ -126,8 +127,35 @@ class WhatsAppNotificationServiceTest {
         assertThat(request.getBody())
                 .containsEntry("number", "5585999998354");
         assertThat(request.getBody().get("text").toString())
-                .contains("Código da confirmação: C843")
-                .contains("Responda *1* para Confirmar")
-                .contains("Responda *2* para Cancelar");
+                .contains("Código desta consulta: C843")
+                .contains("Para confirmar, digite *1 C843*")
+                .contains("Para cancelar, digite *2 C843*");
+    }
+
+    // Paciente com uma única consulta ativa: o código não deve poluir a mensagem.
+    @Test
+    void shouldOmitConfirmationCodeWhenPatientHasOnlyOneActiveAppointment() {
+        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(String.class)))
+                .thenReturn(ResponseEntity.ok("{\"key\":{\"id\":\"message-789\"}}"));
+
+        service.sendAppointmentReminderReturningMessageId(
+                "85999998354",
+                "Maria",
+                "TClinic",
+                "26/06/2026",
+                "11:00",
+                "(85) 3333-4444",
+                "C843",
+                false
+        );
+
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        ArgumentCaptor<HttpEntity<Map<String, Object>>> requestCaptor = ArgumentCaptor.forClass((Class) HttpEntity.class);
+        verify(restTemplate).postForEntity(anyString(), requestCaptor.capture(), eq(String.class));
+
+        assertThat(requestCaptor.getValue().getBody().get("text").toString())
+                .contains("Para confirmar, digite *1*")
+                .contains("Para cancelar, digite *2*")
+                .doesNotContain("C843");
     }
 }

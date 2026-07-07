@@ -173,4 +173,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
 
     /** Todos os agendamentos ativos do(s) paciente(s) — usado para resolver ambiguidade via código quando há mais de um candidato. */
     List<Appointment> findByPatientIdInAndStatusIn(List<UUID> patientIds, List<AppointmentStatus> statuses);
+
+    /** Quantidade de agendamentos ativos do paciente — usado para decidir se o código de confirmação precisa aparecer no lembrete. */
+    long countByPatientIdAndStatusIn(UUID patientId, List<AppointmentStatus> statuses);
 }

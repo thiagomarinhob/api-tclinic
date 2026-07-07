@@ -114,9 +114,12 @@ public class AppointmentReminderJob {
         }
         String confirmationCode = confirmationCodeOpt.get();
 
+        long activeAppointments = appointmentRepository.countByPatientIdAndStatusIn(patient.getId(), ACTIVE_STATUSES);
+        boolean includeConfirmationCode = activeAppointments > 1;
+
         var messageIdOpt = whatsAppNotificationService.sendAppointmentReminderReturningMessageId(
                 patient.getWhatsapp(), nomePaciente, nomeClinica, dataConsulta, horarioConsulta, telefoneContato,
-                confirmationCode);
+                confirmationCode, includeConfirmationCode);
 
         appointment.setConfirmationCode(confirmationCode);
 
