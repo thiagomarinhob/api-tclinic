@@ -171,6 +171,31 @@ class DefaultProcessWhatsAppWebhookUseCaseTest {
         verify(notificationCreator).createAppointmentConfirmation(appointment);
     }
 
+    // Regressão: Sender de multi-device vem como "numero:device@s.whatsapp.net" (ex.: "...:38@...").
+    // Sem stripar o ":device" antes de normalizar, os dígitos do device grudavam no telefone e o
+    // fallback por telefone (usado quando o paciente digita "1" direto, sem swipe-reply) nunca batia.
+    @Test
+    void whenSenderJidHasMultiDeviceSuffix_thenPhoneFallbackStillMatches() {
+        Appointment appointment = appointmentWith(AppointmentStatus.AGENDADO, "C111");
+        stubSinglePatientMatch(appointment.getPatient().getId());
+        when(appointmentRepository.findByPatientIdInAndStatusIn(any(), any())).thenReturn(List.of(appointment));
+
+        String bodyWithDeviceSuffix = """
+                {
+                  "event": "Message",
+                  "data": {
+                    "Info": {"Type": "text", "Sender": "557499879409:38@s.whatsapp.net", "IsFromMe": false, "MsgMetaInfo": {"TargetID": ""}},
+                    "Message": {"conversation": "1"}
+                  }
+                }
+                """;
+
+        execute(bodyWithDeviceSuffix);
+
+        assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.CONFIRMADO);
+        verify(patientRepository).findByWhatsappNormalized(eq("5574999879409"), eq("74999879409"));
+    }
+
     // Reply/preview de link chega em Message.extendedTextMessage.text em vez de Message.conversation.
     @Test
     void whenTextArrivesAsExtendedTextMessage_thenIsStillRecognized() {

@@ -322,7 +322,7 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
 
     private List<Appointment> findCandidatesByPhone(String remoteJid) {
         if (remoteJid.isBlank()) return List.of();
-        String phone = remoteJid.replace("@s.whatsapp.net", "");
+        String phone = extractPhoneFromJid(remoteJid);
         String normalizedPhone = WhatsAppNotificationService.normalizePhone(phone);
         if (normalizedPhone == null || normalizedPhone.length() < 10) {
             return List.of();
@@ -338,10 +338,24 @@ public class DefaultProcessWhatsAppWebhookUseCase implements ProcessWhatsAppWebh
         return appointmentRepository.findByPatientIdInAndStatusIn(patientIds, ACTIVE_STATUSES);
     }
 
+    /**
+     * Extrai a parte do número de um JID do WhatsApp, descartando tanto o servidor
+     * ("@s.whatsapp.net"/"@lid") quanto o sufixo de device de multi-device ("557499879409:38@...").
+     * Sem isso, o ":device" sobra nos dígitos após a normalização e corrompe o telefone.
+     */
+    private static String extractPhoneFromJid(String jid) {
+        int cut = jid.length();
+        int atIdx = jid.indexOf('@');
+        if (atIdx >= 0) cut = atIdx;
+        int colonIdx = jid.indexOf(':');
+        if (colonIdx >= 0 && colonIdx < cut) cut = colonIdx;
+        return jid.substring(0, cut);
+    }
+
     private static String maskJid(String jid) {
         if (jid == null || jid.length() < 4) return "***";
         int atIdx = jid.indexOf('@');
-        String number = atIdx > 0 ? jid.substring(0, atIdx) : jid;
+        String number = extractPhoneFromJid(jid);
         String suffix = atIdx > 0 ? jid.substring(atIdx) : "";
         return "***" + number.substring(Math.max(0, number.length() - 4)) + suffix;
     }
